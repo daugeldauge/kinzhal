@@ -2,13 +2,14 @@
 
 package com.daugeldauge.kinzhal.sample
 
-@javax.inject.Scope
+@JavaxScope
+@KinzhalScope
 annotation class MainActivityScope
 
 @MainActivityScope
-class Router @javax.inject.Inject constructor()
+class Router @JavaxInject @KinzhalInject constructor()
 
-class ArtistsPresenter @javax.inject.Inject constructor(
+class ArtistsPresenter @JavaxInject @KinzhalInject constructor(
     private val database: Database,
     private val artistImagesStorage: ArtistImagesStorage,
     private val deezer: DeezerApi,

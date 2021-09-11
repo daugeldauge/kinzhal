@@ -2,21 +2,21 @@
 
 package com.daugeldauge.kinzhal.sample
 
-@dagger.Module
+@DaggerModule
 interface NetworkModule {
 
     companion object {
-        @dagger.Provides
+        @DaggerProvides
         fun provideHttpClient() = HttpClient()
     }
 
-    @dagger.Binds
+    @DaggerBinds
     fun bindLastFm(lastFmApi: LastFmKtorApi): LastFmApi
 
-    @dagger.Binds
+    @DaggerBinds
     fun bindSpotify(spotifyKtorApi: SpotifyKtorApi): SpotifyApi
 
-    @dagger.Binds
+    @DaggerBinds
     fun bindDeezer(deezerApi: DeezerKtorApi): DeezerApi
 
 }

@@ -10,6 +10,7 @@ repositories {
 
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
+    implementation(project(":kinzhal-annotations"))
     implementation(project(":kinzhal-processor"))
     ksp(project(":kinzhal-processor"))
 

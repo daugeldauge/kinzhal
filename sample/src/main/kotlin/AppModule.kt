@@ -1,8 +1,8 @@
 package com.daugeldauge.kinzhal.sample
 
-@dagger.Module
+@DaggerModule
 object AppModule {
     @AppScope
-    @dagger.Provides
+    @DaggerProvides
     fun provideContentResolver() = object : ContentResolver {}
 }

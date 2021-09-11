@@ -10,10 +10,10 @@ interface DeezerApi
 
 interface SpotifyApi
 
-class LastFmKtorApi @javax.inject.Inject constructor(client: HttpClient) : LastFmApi
+class LastFmKtorApi @JavaxInject @KinzhalInject constructor(client: HttpClient) : LastFmApi
 
-class DeezerKtorApi @javax.inject.Inject constructor(client: HttpClient) : DeezerApi
+class DeezerKtorApi @JavaxInject @KinzhalInject constructor(client: HttpClient) : DeezerApi
 
-class SpotifyKtorApi @javax.inject.Inject constructor(client: HttpClient) : SpotifyApi
+class SpotifyKtorApi @JavaxInject @KinzhalInject constructor(client: HttpClient) : SpotifyApi
 
 

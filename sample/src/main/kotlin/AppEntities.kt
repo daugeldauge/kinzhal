@@ -2,17 +2,16 @@
 
 package com.daugeldauge.kinzhal.sample
 
-import javax.inject.Inject as JavaxInject
-
-@javax.inject.Scope
+@JavaxScope
+@KinzhalScope
 annotation class AppScope
 
 interface ContentResolver
 
 @AppScope
-class Database @JavaxInject constructor(contentResolver: ContentResolver)
+class Database @JavaxInject @KinzhalInject constructor(contentResolver: ContentResolver)
 
 @AppScope
-class ArtistImagesStorage @JavaxInject constructor()
+class ArtistImagesStorage @JavaxInject @KinzhalInject constructor()
 
-class AuthPresenter @JavaxInject constructor(database: Database, lastFmApi: LastFmApi)
+class AuthPresenter @JavaxInject @KinzhalInject constructor(database: Database, lastFmApi: LastFmApi)
