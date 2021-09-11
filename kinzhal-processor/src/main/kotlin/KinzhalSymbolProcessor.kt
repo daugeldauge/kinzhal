@@ -2,6 +2,7 @@ package com.daugeldauge.kinzhal.processor
 
 import com.daugeldauge.kinzhal.Component
 import com.daugeldauge.kinzhal.Inject
+import com.google.devtools.ksp.isAbstract
 import com.google.devtools.ksp.isConstructor
 import com.google.devtools.ksp.processing.*
 import com.google.devtools.ksp.symbol.*
@@ -19,22 +20,7 @@ data class Binding(
 class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private val logger: KSPLogger) :
     SymbolProcessor {
 
-    var invoked = false
-
     override fun process(resolver: Resolver): List<KSAnnotated> {
-
-        if (invoked) {
-            return emptyList()
-        } else {
-            invoked = true
-        }
-
-        val commentBuilder = StringBuilder()
-
-
-        commentBuilder.appendLine()
-        commentBuilder.appendLine("Injectables:")
-
 
         val constructorInjectedBindings = resolver.getSymbolsWithAnnotation(Inject::class.requireQualifiedName())
             .mapNotNull { injectable ->
@@ -81,9 +67,7 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
                                     )
                                     .build()
                             )
-                            .addSuperinterface(ParameterizedTypeName.run {
-                                Function0::class.asTypeName().parameterizedBy(injectableClassName)
-                            })
+                            .addSuperinterface(LambdaTypeName.get(returnType = injectableClassName))
                             .addProperties(properties)
                             .addFunction(
                                 FunSpec.builder("invoke")
@@ -112,9 +96,6 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
             }
             .toMap()
 
-        commentBuilder.appendLine()
-        commentBuilder.appendLine("Components:")
-
         resolver.getSymbolsWithAnnotation(Component::class.requireQualifiedName())
             .forEach { component ->
 
@@ -122,8 +103,6 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
                     logger.error("@Component can't be applied to $component: must be an interface", component)
                     return@forEach
                 }
-
-                commentBuilder.appendLine(component.simpleName.asString())
 
                 logger.warn(component.annotations.joinToString { it.annotationType.toString() }, component)
 
@@ -135,17 +114,53 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
                     .find { it.name?.asString() == Component::modules.name }!!
                     .value as List<KSType>
 
-                commentBuilder.appendLine(" > ${modules.joinToString(",") { it.declaration.simpleName.asString() }}")
+                val componentName = "Kinzhal${component.simpleName.asString()}"
 
-            }
+                val provisionMethods = component.getAllFunctions()
+                    .filter { it.isAbstract }
 
+                val provisionProperties = component.getAllProperties()
+                    .filter { it.isAbstract() }
 
-        codeGenerator.createNewFile(Dependencies(false), "com.example.well.done", "WellDone", "kt").writer()
-            .use { writer ->
-                FileSpec.builder(packageName = "com.example.well.done", fileName = "WellDone.kt")
-                    .addType(TypeSpec.objectBuilder("WellDone").addKdoc(commentBuilder.toString()).build())
-                    .build()
-                    .writeTo(writer)
+                codeGenerator.newFile(
+                    dependenciesAggregating = true,
+                    dependencies = arrayOf(component.containingFile!!),
+                    packageName = component.qualifiedName!!.getQualifier(),
+                    fileName = componentName,
+                ) {
+                    addType(
+                        TypeSpec.classBuilder(componentName)
+                            .addSuperinterface(component.asClassName())
+                            .addFunctions(
+                                provisionMethods.mapNotNull { declaration ->
+                                    if (declaration.parameters.isEmpty()) {
+                                        FunSpec.builder(declaration.simpleName.asString())
+                                            .addModifiers(KModifier.OVERRIDE)
+                                            .returns((declaration.returnType!!.resolveToUnderlying().declaration as KSClassDeclaration).asClassName())
+                                            .addCode("return TODO()")
+                                            .build()
+                                    } else {
+                                        logger.error("Provision methods must not have any parameters", declaration)
+                                        null
+                                    }
+                                }.toList()
+                            )
+                            .addProperties(
+                                provisionProperties.mapNotNull { declaration ->
+                                    if (!declaration.isMutable) {
+                                        PropertySpec.builder(declaration.simpleName.asString(), (declaration.type.resolveToUnderlying().declaration as KSClassDeclaration).asClassName())
+                                            .addModifiers(KModifier.OVERRIDE)
+                                            .getter(FunSpec.getterBuilder().addCode("return TODO()").build())
+                                            .build()
+                                    } else {
+                                        logger.error("Provision property must not be mutable", declaration)
+                                        null
+                                    }
+                                }.toList()
+                            )
+                            .build()
+                    )
+                }
 
             }
 

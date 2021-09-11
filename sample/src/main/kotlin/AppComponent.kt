@@ -2,6 +2,10 @@ package com.daugeldauge.kinzhal.sample
 
 import com.daugeldauge.kinzhal.sample.network.NetworkModule
 
+interface SuperComponent {
+    fun createArtistsPresenter(): ArtistsPresenter
+}
+
 @AppScope
 @MainActivityScope
 @DaggerComponent(modules = [
@@ -12,9 +16,9 @@ import com.daugeldauge.kinzhal.sample.network.NetworkModule
     NetworkModule::class,
     AppModule::class,
 ])
-interface AppComponent {
-
-    fun createArtistsPresenter(): ArtistsPresenter
+interface AppComponent : SuperComponent {
 
     fun createAuthPresenter(): AuthPresenter
+
+    val router: Router
 }

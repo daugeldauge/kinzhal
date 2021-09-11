@@ -4,5 +4,5 @@ package com.daugeldauge.kinzhal.sample
 object AppModule {
     @AppScope
     @DaggerProvides
-    fun provideContentResolver() = object : ContentResolver {}
+    fun provideContentResolver(@Suppress("UNUSED_PARAMETER") router: Router) = object : ContentResolver {}
 }
