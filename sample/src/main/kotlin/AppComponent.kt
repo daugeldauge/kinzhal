@@ -1,5 +1,7 @@
 package com.daugeldauge.kinzhal.sample
 
+import com.daugeldauge.kinzhal.sample.network.NetworkModule
+
 @AppScope
 @MainActivityScope
 @DaggerComponent(modules = [

@@ -19,3 +19,9 @@ dependencies {
         exclude(group = "com.google.devtools.ksp")
     }
 }
+
+kotlin {
+    sourceSets.main {
+        kotlin.srcDir("$buildDir/generated/ksp/main/kotlin")
+    }
+}

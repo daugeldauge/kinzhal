@@ -1,6 +1,10 @@
 @file:Suppress("unused")
 
-package com.daugeldauge.kinzhal.sample
+package com.daugeldauge.kinzhal.sample.network
+
+import com.daugeldauge.kinzhal.sample.DaggerBinds
+import com.daugeldauge.kinzhal.sample.DaggerModule
+import com.daugeldauge.kinzhal.sample.DaggerProvides
 
 @DaggerModule
 interface NetworkModule {

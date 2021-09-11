@@ -2,6 +2,9 @@
 
 package com.daugeldauge.kinzhal.sample
 
+import com.daugeldauge.kinzhal.sample.network.DeezerApi
+import com.daugeldauge.kinzhal.sample.network.SpotifyApi
+
 @JavaxScope
 @KinzhalScope
 annotation class MainActivityScope

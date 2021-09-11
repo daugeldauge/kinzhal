@@ -1,6 +1,9 @@
 @file:Suppress("unused", "UNUSED_PARAMETER")
 
-package com.daugeldauge.kinzhal.sample
+package com.daugeldauge.kinzhal.sample.network
+
+import com.daugeldauge.kinzhal.sample.JavaxInject
+import com.daugeldauge.kinzhal.sample.KinzhalInject
 
 class HttpClient
 

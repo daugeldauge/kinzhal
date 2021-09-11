@@ -2,6 +2,8 @@
 
 package com.daugeldauge.kinzhal.sample
 
+import com.daugeldauge.kinzhal.sample.network.LastFmApi
+
 @JavaxScope
 @KinzhalScope
 annotation class AppScope
