@@ -1,61 +1,108 @@
 package com.daugeldauge.kinzhal.processor
 
+import com.daugeldauge.kinzhal.Component
+import com.daugeldauge.kinzhal.Inject
+import com.google.devtools.ksp.isConstructor
 import com.google.devtools.ksp.processing.*
 import com.google.devtools.ksp.symbol.*
-import java.io.OutputStream
+import com.squareup.kotlinpoet.FileSpec
+import com.squareup.kotlinpoet.TypeSpec
+import kotlin.reflect.KClass
 
-class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator) : SymbolProcessor {
+class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private val logger: KSPLogger) : SymbolProcessor {
 
-
-    private var invoked = false
+    var invoked = false
 
     override fun process(resolver: Resolver): List<KSAnnotated> {
+
         if (invoked) {
             return emptyList()
-        }
-        invoked = true
-
-        val out: OutputStream = codeGenerator.createNewFile(Dependencies(false), "com.example.well.done", "WellDone")
-
-        fun write(s: String) {
-            out.write((s + "\n").toByteArray())
+        } else {
+            invoked = true
         }
 
-        val files = resolver.getAllFiles()
+        val commentBuilder = StringBuilder()
 
-        write("package com.example.well.done")
-        write("")
 
-        write("/*")
-        files.forEach { originalFile ->
-            originalFile.accept(object : KSVisitorVoid() {
-                override fun visitFile(file: KSFile, data: Unit) {
-                    file.declarations.filterIsInstance<KSClassDeclaration>().forEach {
-                        it.accept(this, Unit)
-                    }
+        commentBuilder.appendLine()
+        commentBuilder.appendLine("Injectables:")
+
+
+        resolver.getSymbolsWithAnnotation(Inject::class.requireQualifiedName())
+            .forEach { injectable ->
+
+                if (injectable !is KSFunctionDeclaration || !injectable.isConstructor()) {
+                    logger.error("@Inject can't be applied to $injectable: only constructor injection supported", injectable)
+                    return@forEach
                 }
 
-                override fun visitClassDeclaration(classDeclaration: KSClassDeclaration, data: Unit) {
-                    write(classDeclaration.simpleName.asString())
-                    classDeclaration.primaryConstructor?.parameters.orEmpty().forEach {
-                        it.type.accept(this, Unit)
-                    }
+                val type = injectable.returnType!!
+
+                val dependencies = injectable.parameters.map { it.type.resolveToUnderlying() }
+
+                commentBuilder.appendLine("${type.resolve().declaration.simpleName.asString()} -> ${dependencies.joinToString(separator = ",") { it.declaration.simpleName.asString() }}")
+            }
+
+        commentBuilder.appendLine()
+        commentBuilder.appendLine("Components:")
+
+        resolver.getSymbolsWithAnnotation(Component::class.requireQualifiedName())
+            .forEach { component ->
+
+                if (component !is KSClassDeclaration || component.classKind != ClassKind.INTERFACE) {
+                    logger.error("@Component can't be applied to $component: must be an interface", component)
+                    return@forEach
                 }
 
-                override fun visitValueParameter(valueParameter: KSValueParameter, data: Unit) {
-                    write("     " + valueParameter.name?.asString())
+                commentBuilder.appendLine(component.simpleName.asString())
+
+                logger.warn(component.annotations.joinToString { it.annotationType.toString() }, component)
+
+                val annotation = component.annotations.find { it.annotationType.resolveToUnderlying().declaration.qualifiedName?.asString() == Component::class.qualifiedName }
+
+                if (annotation == null) {
+                    logger.error("IS NULL", component)
+                    return@forEach
                 }
-            }, Unit)
+
+                @Suppress("UNCHECKED_CAST")
+                val modules = annotation.arguments
+                    .find { it.name?.asString() == Component::modules.name }!!
+                    .value as List<KSType>
+
+                commentBuilder.appendLine(" > ${ modules.joinToString(",") { it.declaration.simpleName.asString() } }")
+
+            }
+
+
+        codeGenerator.createNewFile(Dependencies(false), "com.example.well.done", "WellDone", "kt").writer().use { writer ->
+            FileSpec.builder(packageName = "com.example.well.done", fileName = "WellDone.kt")
+                .addType(TypeSpec.objectBuilder("WellDone").addKdoc(commentBuilder.toString()).build())
+                .build()
+                .writeTo(writer)
+
         }
-        write("*/")
-        write("object WellDone")
+
         return emptyList()
     }
 }
 
+private fun KClass<*>.requireQualifiedName() = qualifiedName!!
+
+private fun KSTypeReference.resolveToUnderlying(): KSType {
+    var candidate = resolve()
+    var declaration = candidate.declaration
+    while (declaration is KSTypeAlias) {
+        candidate = declaration.type.resolve()
+        declaration = candidate.declaration
+    }
+    return candidate
+}
+
+
 class KinzhalSymbolProcessorProvider : SymbolProcessorProvider {
     override fun create(environment: SymbolProcessorEnvironment): SymbolProcessor {
-        return KinzhalSymbolProcessor(environment.codeGenerator)
+        return KinzhalSymbolProcessor(environment.codeGenerator, environment.logger)
     }
 }
 

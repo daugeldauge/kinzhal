@@ -15,5 +15,4 @@ interface AppComponent {
     fun createArtistsPresenter(): ArtistsPresenter
 
     fun createAuthPresenter(): AuthPresenter
-
 }
