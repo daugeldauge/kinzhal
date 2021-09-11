@@ -31,66 +31,10 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
                 }
 
                 val injectableType = injectable.returnType!!.resolveToUnderlying()
-                val injectableClassName = (injectableType.declaration as KSClassDeclaration).asClassName()
 
                 val dependencies = injectable.parameters.map { it.type.resolveToUnderlying() }
 
-                val packageName = injectableType.declaration.packageName.asString()
-                val factoryName = injectableType.declaration.simpleName.asString() + "Factory"
-
-
-                val providers: List<Pair<String, TypeName>> = injectable.parameters.map {
-                    ("${it.name!!.asString()}Provider") to LambdaTypeName.get(returnType = (it.type.resolveToUnderlying().declaration as KSClassDeclaration).asClassName())
-                }
-
-                codeGenerator.newFile(
-                    dependenciesAggregating = false,
-                    dependencies = arrayOf(injectable.containingFile!!),
-                    packageName = packageName,
-                    fileName = factoryName,
-                ) {
-
-                    val properties = providers.map { (name, type) ->
-                        PropertySpec.builder(
-                            name,
-                            type,
-                            KModifier.PRIVATE,
-                        ).initializer(name).build()
-                    }
-
-                    addType(
-                        TypeSpec.classBuilder(factoryName)
-                            .primaryConstructor(
-                                FunSpec.constructorBuilder()
-                                    .addParameters(
-                                        providers.map { (name, type) -> ParameterSpec.builder(name, type).build() }
-                                    )
-                                    .build()
-                            )
-                            .addSuperinterface(LambdaTypeName.get(returnType = injectableClassName))
-                            .addProperties(properties)
-                            .addFunction(
-                                FunSpec.builder("invoke")
-                                    .returns(injectableClassName)
-                                    .addModifiers(KModifier.OVERRIDE)
-                                    .addCode(CodeBlock.builder().apply {
-                                        if (properties.isEmpty()) {
-                                            add("return %T()", injectableClassName)
-                                        } else {
-                                            add("return %T(\n", injectableClassName)
-                                            withIndent {
-                                                properties.forEach {
-                                                    add("%N(),\n", it)
-                                                }
-                                            }
-                                            add(")")
-                                        }
-                                    }.build())
-                                    .build()
-                            )
-                            .build()
-                    )
-                }
+                generateFactory(injectableType, injectable) { add("%T", injectableType.asTypeName()) }
 
                 injectableType.toBinding() to dependencies.map { it.toBinding() }
             }
@@ -114,9 +58,20 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
                     .find { it.name?.asString() == Component::modules.name }!!
                     .value as List<KSType>).map { it.declaration as KSClassDeclaration }
 
-                val modulesWithCompanions = modules + modules.mapNotNull { module -> module.declarations.find { it is KSClassDeclaration && it.isCompanionObject } }
+                val modulesWithCompanions = modules + modules.mapNotNull { module ->
+                    module.declarations.filterIsInstance<KSClassDeclaration>().find { it.isCompanionObject }
+                }
 
-                logger.warn("modules >> $modulesWithCompanions")
+                modulesWithCompanions.forEach { module ->
+                    module.declarations.filterIsInstance<KSFunctionDeclaration>()
+                        .filter { !it.isAbstract && !it.isConstructor() }
+                        .forEach { providerMethod ->
+
+                            val injectableType = providerMethod.returnType!!.resolveToUnderlying()
+
+                            generateFactory(injectableType, providerMethod) { add("%T.${providerMethod.simpleName.asString()}", module.asClassName()) }
+                        }
+                }
 
                 val componentName = "Kinzhal${component.simpleName.asString()}"
 
@@ -152,7 +107,8 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
                             .addProperties(
                                 provisionProperties.mapNotNull { declaration ->
                                     if (!declaration.isMutable) {
-                                        PropertySpec.builder(declaration.simpleName.asString(), (declaration.type.resolveToUnderlying().declaration as KSClassDeclaration).asClassName())
+                                        PropertySpec.builder(declaration.simpleName.asString(),
+                                            (declaration.type.resolveToUnderlying().declaration as KSClassDeclaration).asClassName())
                                             .addModifiers(KModifier.OVERRIDE)
                                             .getter(FunSpec.getterBuilder().addCode("return TODO()").build())
                                             .build()
@@ -169,6 +125,72 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
             }
 
         return emptyList()
+    }
+
+    private fun generateFactory(
+        injectableType: KSType,
+        sourceDeclaration: KSFunctionDeclaration,
+        addCreateInstanceCall: CodeBlock.Builder.() -> Unit,
+    ) {
+
+        val packageName = injectableType.declaration.packageName.asString()
+        val factoryName = injectableType.declaration.simpleName.asString() + "Factory"
+
+        val providers: List<Pair<String, TypeName>> = sourceDeclaration.parameters.map {
+            ("${it.name!!.asString()}Provider") to LambdaTypeName.get(returnType = (it.type.resolveToUnderlying().declaration as KSClassDeclaration).asClassName())
+        }
+
+        codeGenerator.newFile(
+            dependenciesAggregating = false,
+            dependencies = listOfNotNull(sourceDeclaration.containingFile).toTypedArray(),//TODO not filter
+            packageName = packageName,
+            fileName = factoryName,
+        ) {
+
+            val properties = providers.map { (name, type) ->
+                PropertySpec.builder(
+                    name,
+                    type,
+                    KModifier.PRIVATE,
+                ).initializer(name).build()
+            }
+
+            addType(
+                TypeSpec.classBuilder(factoryName)
+                    .primaryConstructor(
+                        FunSpec.constructorBuilder()
+                            .addParameters(
+                                providers.map { (name, type) -> ParameterSpec.builder(name, type).build() }
+                            )
+                            .build()
+                    )
+                    .addSuperinterface(LambdaTypeName.get(returnType = injectableType.asTypeName()))
+                    .addProperties(properties)
+                    .addFunction(
+                        FunSpec.builder("invoke")
+                            .returns(injectableType.asTypeName())
+                            .addModifiers(KModifier.OVERRIDE)
+                            .addCode(CodeBlock.builder().apply {
+                                add("return ")
+                                addCreateInstanceCall()
+
+                                if (properties.isEmpty()) {
+                                    add("()")
+                                } else {
+                                    add("(\n")
+                                    withIndent {
+                                        properties.forEach {
+                                            add("%N(),\n", it)
+                                        }
+                                    }
+                                    add(")")
+                                }
+                            }.build())
+                            .build()
+                    )
+                    .build()
+            )
+        }
     }
 }
 
@@ -190,6 +212,10 @@ private inline fun CodeGenerator.newFile(
             .build()
             .writeTo(writer)
     }
+}
+
+private fun KSType.asTypeName(): TypeName {
+    return (declaration as KSClassDeclaration).asClassName()
 }
 
 private fun KSClassDeclaration.asClassName(): ClassName {
