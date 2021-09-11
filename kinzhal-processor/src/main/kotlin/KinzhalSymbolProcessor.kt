@@ -110,9 +110,13 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
                     component.annotations.find { it.annotationType.resolveToUnderlying().declaration.qualifiedName?.asString() == Component::class.qualifiedName }!!
 
                 @Suppress("UNCHECKED_CAST")
-                val modules = annotation.arguments
+                val modules = (annotation.arguments
                     .find { it.name?.asString() == Component::modules.name }!!
-                    .value as List<KSType>
+                    .value as List<KSType>).map { it.declaration as KSClassDeclaration }
+
+                val modulesWithCompanions = modules + modules.mapNotNull { module -> module.declarations.find { it is KSClassDeclaration && it.isCompanionObject } }
+
+                logger.warn("modules >> $modulesWithCompanions")
 
                 val componentName = "Kinzhal${component.simpleName.asString()}"
 
