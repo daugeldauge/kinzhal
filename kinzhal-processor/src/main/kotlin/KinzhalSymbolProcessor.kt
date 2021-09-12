@@ -3,6 +3,7 @@ package com.daugeldauge.kinzhal.processor
 import com.daugeldauge.kinzhal.Component
 import com.daugeldauge.kinzhal.Inject
 import com.daugeldauge.kinzhal.Qualifier
+import com.google.devtools.ksp.closestClassDeclaration
 import com.google.devtools.ksp.isAbstract
 import com.google.devtools.ksp.isConstructor
 import com.google.devtools.ksp.processing.*
@@ -145,7 +146,7 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
                             val typeKey = bindingFunction.returnTypeKey()
                             val parameterKey = bindingFunction.parameters.first().type.resolveToUnderlying().toKey()
 
-                            if (!typeKey.type.isAssignableFrom(parameterKey.type))  {
+                            if (!typeKey.type.isAssignableFrom(parameterKey.type)) {
                                 logger.error("Binding function return type must be assignable from parameter", bindingFunction)
                             }
 
@@ -189,43 +190,64 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
                     componentDependencies = componentDependencies,
                     delegated = delegated,
                     requested = (requestedFunctionKeys + requestedPropertyKeys).toList(),
-                ).resolve(logger)
-
-                val generatedComponentName = "Kinzhal${component.simpleName.asString()}"
-
-                codeGenerator.newFile(
-                    dependenciesAggregating = true,
-                    dependencies = arrayOf(component.containingFile!!),
-                    packageName = component.qualifiedName!!.getQualifier(),
-                    fileName = generatedComponentName,
-                ) {
-                    addType(
-                        TypeSpec.classBuilder(generatedComponentName)
-                            .addSuperinterface(component.asClassName())
-                            .addFunctions(
-                                component.provisionFunctions().map { declaration ->
-                                    FunSpec.builder(declaration.simpleName.asString())
-                                        .addModifiers(KModifier.OVERRIDE)
-                                        .returns(declaration.returnTypeKey().asTypeName())
-                                        .addCode("return TODO()")
-                                        .build()
-                                }.toList()
-                            )
-                            .addProperties(
-                                component.provisionProperties().map { declaration ->
-                                    PropertySpec.builder(declaration.simpleName.asString(), declaration.type.resolveToUnderlying().toKey().asTypeName())
-                                        .addModifiers(KModifier.OVERRIDE)
-                                        .getter(FunSpec.getterBuilder().addCode("return TODO()").build())
-                                        .build()
-                                }.toList()
-                            )
-                            .build()
-                    )
-                }
+                ).resolve(logger).generateComponent()
 
             }
 
         return emptyList()
+    }
+
+    private fun ResolvedBindingGraph.generateComponent() {
+        val generatedComponentName = "Kinzhal${component.simpleName.asString()}"
+
+        val constructorProperties = componentDependencies.map {
+            val name = it.componentDependencyPropertyName()
+            val typeName = it.classDeclaration().asClassName()
+            name to typeName
+        }
+
+        codeGenerator.newFile(
+            dependenciesAggregating = true, // TODO is it true?
+            dependencies = arrayOf(component.containingFile!!), // TODO should add files with constructor injections?
+            packageName = component.qualifiedName!!.getQualifier(),
+            fileName = generatedComponentName,
+        ) {
+            addType(
+                TypeSpec.classBuilder(generatedComponentName)
+                    .addSuperinterface(component.asClassName())
+                    .primaryConstructor(
+                        FunSpec.constructorBuilder()
+                            .addParameters(constructorProperties.map { (name, type) -> ParameterSpec(name, type) })
+                            .build()
+                    )
+                    .addProperties(
+                        constructorProperties.map { (name, type) ->
+                            PropertySpec.builder(name, type, KModifier.PRIVATE)
+                                .initializer(name)
+                                .build()
+                        }
+                    )
+                    .addProperties(bindings.mapNotNull { it.asPropertySpec() })
+                    .addFunctions(
+                        component.provisionFunctions().map { declaration ->
+                            FunSpec.builder(declaration.simpleName.asString())
+                                .addModifiers(KModifier.OVERRIDE)
+                                .returns(declaration.returnTypeKey().asTypeName())
+                                .addCode("return TODO()")
+                                .build()
+                        }.toList()
+                    )
+                    .addProperties(
+                        component.provisionProperties().map { declaration ->
+                            PropertySpec.builder(declaration.simpleName.asString(), declaration.type.resolveToUnderlying().toKey().asTypeName())
+                                .addModifiers(KModifier.OVERRIDE)
+                                .getter(FunSpec.getterBuilder().addCode("return TODO()").build())
+                                .build()
+                        }.toList()
+                    )
+                    .build()
+            )
+        }
     }
 
     private fun generateFactory(
@@ -359,7 +381,52 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
     }
 }
 
-private fun UnresolvedBindingGraph.resolve(logger: KSPLogger): ResolvedBindingGraph? {
+private fun Binding.asPropertySpec(): PropertySpec? {
+    val name = componentProviderName() ?: return null
+
+    return PropertySpec.builder(name, LambdaTypeName.get(returnType = key.asTypeName()), KModifier.PRIVATE)
+        .initializer(providerInitializer())
+        .build()
+}
+
+private fun Binding.componentProviderName(): String? {
+    // TODO escaping?
+    return when (this) {
+        is FactoryBinding -> key.componentProviderName() + if (scoped) "Lazy" else "Provider"
+        is DelegatedBinding -> key.componentProviderName() + "Provider"
+        is ComponentDependencyFunctionBinding -> null
+        is ComponentDependencyPropertyBinding -> null
+    }
+}
+
+private fun Binding.providerInitializer(): String {
+    return when (this) {
+        is FactoryBinding -> {
+            // TODO CodeBlock
+            val factoryCall = factoryQualifiedName + dependencies.joinToString(separator = ", ", prefix = "(", postfix = ")") { it.componentProviderName() + "Provider" }
+            if (scoped) "lazy($factoryCall)" else factoryCall
+        }
+        is DelegatedBinding -> componentProviderName() + "Provider"
+        is ComponentDependencyFunctionBinding -> "(appDependencies::${declaration.simpleName.asString()})"
+        is ComponentDependencyPropertyBinding -> "(appDependencies::${declaration.simpleName.asString()})"
+    }
+}
+
+private fun Binding.providerReference(): String {
+    return when (this) {
+        is FactoryBinding -> componentProviderName() + "Provider" + dependencies.joinToString(separator = ", ", prefix = "(", postfix = ")") { it.componentProviderName() + "Provider" }
+        is DelegatedBinding -> componentProviderName() + "Provider"
+        is ComponentDependencyFunctionBinding -> "(appDependencies::${declaration.simpleName.asString()})"
+        is ComponentDependencyPropertyBinding -> "(appDependencies::${declaration.simpleName.asString()})"
+    }
+}
+
+private fun Key.componentProviderName() = type.declaration.simpleName.asString().replaceFirstChar { it.lowercase() }
+
+private fun KSType.componentDependencyPropertyName() = declaration.simpleName.asString().replaceFirstChar { it.lowercase() }
+
+
+private fun UnresolvedBindingGraph.resolve(logger: KSPLogger): ResolvedBindingGraph {
 
     val allBindings = mutableMapOf<Key, Binding>()
 
@@ -377,19 +444,46 @@ private fun UnresolvedBindingGraph.resolve(logger: KSPLogger): ResolvedBindingGr
         dependency.bindings.forEach(::add)
     }
 
-    allBindings.forEach { (key, binding) ->
-        binding.dependencies.forEach {
-            if (!allBindings.contains(it)) {
-                logger.error("Missing binding: $key was not provided", binding.declaration)
-                return null
+    delegated.forEach(::add)
+
+    fun Key.binding() = allBindings[this] ?: throw IllegalStateException().also {
+        logger.error("Missing binding: $this was not provided") // TODO add reference to requested
+    }
+
+    // TODO think about optimizing allBinding lookups
+
+    val white = requested.map { it.key }.toMutableList()
+    val grey = ArrayDeque<Key>()
+    val black = linkedSetOf<Key>()
+
+    fun tarjan(binding: Binding) {
+        when {
+            black.contains(binding.key) -> Unit
+            grey.contains(binding.key) -> {
+                logger.error("Dependency cycle detected: \n    ${grey.joinToString(separator = " -> ")}", binding.declaration)
+            }
+            else -> { // white
+                white.remove(binding.key)
+                grey.addLast(binding.key)
+                binding.dependencies.forEach {
+                    tarjan(it.binding())
+                }
+                grey.removeLast()
+                black += binding.key
             }
         }
+    }
+
+    while (white.isNotEmpty()) {
+        val current = white.last()
+
+        tarjan(current.binding())
     }
 
     return ResolvedBindingGraph(
         component = component,
         componentDependencies = componentDependencies.map { it.type },
-        bindings = emptyList(),
+        bindings = black.map { it.binding() },
         requested = requested,
     )
 }

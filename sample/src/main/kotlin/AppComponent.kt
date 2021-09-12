@@ -41,10 +41,11 @@ class AppComponentImpl(private val appDependencies: AppDependencies) : AppCompon
     private val databaseLazy = lazy(DatabaseFactory(contentResolverProvider))
     private val lastFmKtorApiProvider = LastFmKtorApiFactory(httpClientProvider)
     private val authPresenterProvider = AuthPresenterFactory(databaseLazy::value, lastFmKtorApiProvider)
-    private val deezerProvider = DeezerKtorApiFactory(httpClientProvider)
+    private val deezerKtorApiProvider = DeezerKtorApiFactory(httpClientProvider)
+    private val deezerApiProvider = deezerKtorApiProvider
     private val spotifyProvider = SpotifyKtorApiFactory(httpClientProvider)
     private val artistImagesStorageLazy = lazy(ArtistImagesStorageFactory())
-    private val artistsPresenterProvider = ArtistsPresenterFactory(databaseLazy::value, artistImagesStorageLazy::value, deezerProvider, spotifyProvider, routerLazy::value)
+    private val artistsPresenterProvider = ArtistsPresenterFactory(databaseLazy::value, artistImagesStorageLazy::value, deezerApiProvider, spotifyProvider, routerLazy::value)
 
     override val router: Router
         get() = (routerLazy::value)()
