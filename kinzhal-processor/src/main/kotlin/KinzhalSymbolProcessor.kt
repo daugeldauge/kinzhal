@@ -299,7 +299,7 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
 
         codeGenerator.newFile(
             dependenciesAggregating = false,
-            dependencies = listOfNotNull(sourceDeclaration.containingFile).toTypedArray(),//TODO not filter
+            dependencies = arrayOf(sourceDeclaration.containingFile!!),
             packageName = packageName,
             fileName = factoryName,
         ) {
@@ -428,14 +428,17 @@ private fun ResolvedBinding.asPropertySpec(): PropertySpec? {
 }
 
 private fun Binding.componentProviderName(): String? {
-    // TODO escaping?
     return when (this) {
-        is FactoryBinding -> key.lowercaseName() + if (scoped) "Lazy" else "Provider"
-        is DelegatedBinding -> key.lowercaseName() + "Provider"
+        is FactoryBinding -> componentProviderName()
+        is DelegatedBinding -> componentProviderName()
         is ComponentDependencyFunctionBinding -> null
         is ComponentDependencyPropertyBinding -> null
     }
 }
+
+private fun DelegatedBinding.componentProviderName(): String = key.lowercaseName() + "Provider"
+private fun FactoryBinding.componentProviderName(): String = key.lowercaseName() + if (scoped) "Lazy" else "Provider"
+
 
 private fun ResolvedBinding.providerInitializer(): CodeBlock {
     return when (binding) {
@@ -450,10 +453,9 @@ private fun ResolvedBinding.providerInitializer(): CodeBlock {
 }
 
 private fun Binding.providerReference(): String {
-    // TODO cleanup
     return when (this) {
-        is FactoryBinding -> if (scoped) "${componentProviderName()!!}::value" else componentProviderName()!!
-        is DelegatedBinding -> componentProviderName()!!
+        is FactoryBinding -> if (scoped) "${componentProviderName()}::value" else componentProviderName()
+        is DelegatedBinding -> componentProviderName()
         is ComponentDependencyFunctionBinding -> "${dependenciesInterface.componentDependencyPropertyName()}::${declaration.simpleName.asString()}"
         is ComponentDependencyPropertyBinding -> "${dependenciesInterface.componentDependencyPropertyName()}::${declaration.simpleName.asString()}"
     }
@@ -487,7 +489,7 @@ private fun UnresolvedBindingGraph.resolve(logger: KSPLogger): ResolvedBindingGr
         logger.error("Missing binding: $this was not provided") // TODO add reference to requested
     }
 
-    // TODO think about optimizing allBinding lookups
+    // TODO think about optimizing allBindings lookups
 
     // Topological sort
     val white = requested.map { it.key }.toMutableList()
