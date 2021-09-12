@@ -14,7 +14,6 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 
 // TODO scope validation
-// TODO module factory naming
 
 data class Key(
     val type: KSType,
@@ -125,7 +124,14 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
 
                 val injectableKey = injectable.returnTypeKey()
 
-                generateFactory(injectableKey, injectableKey.type.declaration.annotations, injectable) { add("%T", injectableKey.asTypeName()) }
+                generateFactory(
+                    injectableKey = injectableKey,
+                    annotations = injectableKey.type.declaration.annotations,
+                    sourceDeclaration = injectable,
+                    addCreateInstanceCall = { add("%T", injectableKey.asTypeName()) },
+                    packageName = injectableKey.type.declaration.packageName.asString(),
+                    factoryName = injectableKey.type.declaration.simpleName.asString() + "Factory",
+                )
             }
             .toList()
 
@@ -151,10 +157,16 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
                         .map { providerFunction ->
 
                             val injectableKey = providerFunction.returnTypeKey()
+                            val providerName = providerFunction.simpleName.asString()
 
-                            generateFactory(injectableKey, providerFunction.annotations, providerFunction) {
-                                add("%T.${providerFunction.simpleName.asString()}", module.asClassName())
-                            }
+                            generateFactory(
+                                injectableKey = injectableKey,
+                                annotations = providerFunction.annotations,
+                                sourceDeclaration = providerFunction,
+                                addCreateInstanceCall = { add("%T.$providerName", module.asClassName()) },
+                                packageName = module.packageName.asString(),
+                                factoryName = ClassName.bestGuess(module.qualifiedName!!.asString()).simpleNames.joinToString(separator = "") + providerName.capitalized() + "Factory",
+                            )
                         }
                 }
 
@@ -293,10 +305,9 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
         annotations: Sequence<KSAnnotation>,
         sourceDeclaration: KSFunctionDeclaration,
         addCreateInstanceCall: CodeBlock.Builder.() -> Unit,
+        packageName: String,
+        factoryName: String,
     ): FactoryBinding {
-
-        val packageName = injectableKey.type.declaration.packageName.asString()
-        val factoryName = injectableKey.type.declaration.simpleName.asString() + "Factory"
 
         val dependencies = sourceDeclaration.parameters.map {
             ("${it.name!!.asString()}Provider") to it.type.toKey(it.annotations)
@@ -474,9 +485,9 @@ private fun Binding.providerReference(): String {
     }
 }
 
-private fun Key.lowercaseName() = type.declaration.simpleName.asString().replaceFirstChar { it.lowercase() }
+private fun Key.lowercaseName() = type.declaration.simpleName.asString().decapitalized()
 
-private fun KSType.componentDependencyPropertyName() = declaration.simpleName.asString().replaceFirstChar { it.lowercase() }
+private fun KSType.componentDependencyPropertyName() = declaration.simpleName.asString().decapitalized()
 
 private fun UnresolvedBindingGraph.resolve(logger: KSPLogger): ResolvedBindingGraph {
 
@@ -591,6 +602,8 @@ private fun KSTypeReference.resolveToUnderlying(): KSType {
     return candidate
 }
 
+private fun String.capitalized(): String = replaceFirstChar { it.uppercase() }
+private fun String.decapitalized(): String = replaceFirstChar { it.lowercase() }
 
 class KinzhalSymbolProcessorProvider : SymbolProcessorProvider {
     override fun create(environment: SymbolProcessorEnvironment): SymbolProcessor {

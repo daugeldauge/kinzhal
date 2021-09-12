@@ -34,13 +34,13 @@ interface AppDependencies {
 
 class AppComponentImpl(private val appDependencies: AppDependencies) : AppComponent {
 
-    private val httpClientProvider = HttpClientFactory()
+    private val httpClientProvider = NetworkModuleCompanionProvideHttpClientFactory()
     private val routerLazy = lazy(RouterFactory(appDependencies::application))
-    private val contentResolverLazy = lazy(ContentResolverFactory(routerLazy::value))
+    private val contentResolverLazy = lazy(AppModuleProvideContentResolverFactory(routerLazy::value))
     private val contentResolverProvider = contentResolverLazy::value
     private val databaseLazy = lazy(DatabaseFactory(contentResolverProvider))
     private val lastFmKtorApiProvider = LastFmKtorApiFactory(httpClientProvider)
-    private val stringProvider = StringFactory()
+    private val stringProvider = AppModuleProvideScreenIdFactory()
     private val authPresenterProvider = AuthPresenterFactory(databaseLazy::value, lastFmKtorApiProvider, stringProvider)
     private val deezerKtorApiProvider = DeezerKtorApiFactory(httpClientProvider)
     private val deezerApiProvider = deezerKtorApiProvider
