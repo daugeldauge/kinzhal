@@ -9,6 +9,7 @@ import com.google.devtools.ksp.processing.*
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.*
 import kotlin.reflect.KClass
+import kotlin.reflect.KProperty
 
 data class Key(
     val type: KSType,
@@ -26,26 +27,45 @@ class FactoryBinding(
     val factoryQualifiedName: String,
 ) : Binding
 
-class ComponentDependencyBinding(
+class ComponentDependencyFunctionBinding(
     override val key: Key,
-    val declaration: KSDeclaration, // Function or property
+    val declaration: KSFunctionDeclaration,
+) : Binding
+
+class ComponentDependencyPropertyBinding(
+    override val key: Key,
+    val declaration: KSPropertyDeclaration,
 ) : Binding
 
 class ComponentDependency(
     val type: KSType,
-    val bindings: Set<ComponentDependencyBinding>,
+    val bindings: List<Binding>,
 )
 
-class RequestedKey(
-    val binding: Key,
-    val declaration: KSDeclaration, // Function or property
+sealed interface RequestedKey {
+    val key: Key
+}
+
+class ComponentFunctionRequestedKey(
+    override val key: Key,
+    val declaration: KSFunctionDeclaration,
+) : RequestedKey
+
+class ComponentPropertyRequestedKey(
+    override val key: Key,
+    val declaration: KSPropertyDeclaration,
+) : RequestedKey
+
+class DelegatedKey(
+    val key: Key,
+    val delegatedTo: Key,
 )
 
 class UnresolvedBindingGraph(
     val component: KSClassDeclaration,
     val factoryBindings: List<FactoryBinding>, // from constructor injected and @Provides
     val componentDependencies: List<ComponentDependency>,
-    val delegated: Map<Key, Key>, // from @Binds
+    val delegated: List<DelegatedKey>, // from @Binds
     val requested: List<RequestedKey>, // component provision methods for now
 )
 
@@ -84,12 +104,9 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
 
                 logger.warn(component.annotations.joinToString { it.annotationType.toString() }, component)
 
-                val annotation = component.findAnnotation<Component>()!!
+                val componentAnnotation = component.findAnnotation<Component>()!!
 
-                @Suppress("UNCHECKED_CAST")
-                val modules = (annotation.arguments
-                    .find { it.name?.asString() == Component::modules.name }!!
-                    .value as List<KSType>).map { it.declaration as KSClassDeclaration }
+                val modules = componentAnnotation.typeListParameter(Component::modules).map { it.declaration as KSClassDeclaration }
 
                 val modulesWithCompanions = modules + modules.mapNotNull { module ->
                     module.declarations.filterIsInstance<KSClassDeclaration>().find { it.isCompanionObject }
@@ -98,60 +115,94 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
                 val providerBindings = modulesWithCompanions.flatMap { module ->
                     module.declarations.filterIsInstance<KSFunctionDeclaration>()
                         .filter { !it.isAbstract && !it.isConstructor() }
-                        .map { providerMethod ->
+                        .map { providerFunction ->
 
-                            val injectableKey = providerMethod.returnTypeKey()
+                            val injectableKey = providerFunction.returnTypeKey()
 
                             generateFactory(injectableKey,
-                                providerMethod) {
-                                add("%T.${providerMethod.simpleName.asString()}", module.asClassName())
+                                providerFunction) {
+                                add("%T.${providerFunction.simpleName.asString()}", module.asClassName())
                             }
                         }
                 }
 
-                val componentName = "Kinzhal${component.simpleName.asString()}"
+                val delegated = modulesWithCompanions.flatMap { module ->
+                    module.declarations.filterIsInstance<KSFunctionDeclaration>()
+                        .filter { it.isAbstract }
+                        .mapNotNull { bindingFunction ->
+                            if (bindingFunction.parameters.size != 1) {
+                                logger.error("Binding function must have exactly one parameter", bindingFunction)
+                                return@mapNotNull null
+                            }
 
-                val provisionMethods = component.getAllFunctions()
-                    .filter { it.isAbstract }
+                            val parameterKey = bindingFunction.parameters.first().type.resolveToUnderlying().toKey()
+                            DelegatedKey(
+                                key = bindingFunction.returnTypeKey(),
+                                delegatedTo = parameterKey,
+                            )
+                        }
+                }
 
-                val provisionProperties = component.getAllProperties()
-                    .filter { it.isAbstract() }
+                val componentDependencies = componentAnnotation.typeListParameter(Component::dependencies)
+                    .mapNotNull { type ->
+                        val declaration = type.declaration
+                        if (declaration !is KSClassDeclaration || declaration.classKind != ClassKind.INTERFACE) {
+                            logger.error("Component dependency must be an interface")
+                            return@mapNotNull null
+                        }
+
+                        val functions = declaration.provisionFunctions()
+                            .map { ComponentDependencyFunctionBinding(it.returnTypeKey(), it) }
+
+                        val properties = declaration.provisionProperties()
+                            .map { ComponentDependencyPropertyBinding(it.typeKey(), it) }
+
+                        ComponentDependency(
+                            type = type,
+                            bindings = (functions + properties).toList(),
+                        )
+                    }
+
+                val requestedFunctionKeys = component.provisionFunctions()
+                    .map { ComponentFunctionRequestedKey(it.returnTypeKey(), it) }
+
+                val requestedPropertyKeys = component.provisionProperties()
+                    .map { ComponentPropertyRequestedKey(it.typeKey(), it) }
+
+                UnresolvedBindingGraph(
+                    component = component,
+                    factoryBindings = (providerBindings + constructorInjectedBindings),
+                    componentDependencies = componentDependencies,
+                    delegated = delegated,
+                    requested = (requestedFunctionKeys + requestedPropertyKeys).toList(),
+                )
+
+                val generatedComponentName = "Kinzhal${component.simpleName.asString()}"
 
                 codeGenerator.newFile(
                     dependenciesAggregating = true,
                     dependencies = arrayOf(component.containingFile!!),
                     packageName = component.qualifiedName!!.getQualifier(),
-                    fileName = componentName,
+                    fileName = generatedComponentName,
                 ) {
                     addType(
-                        TypeSpec.classBuilder(componentName)
+                        TypeSpec.classBuilder(generatedComponentName)
                             .addSuperinterface(component.asClassName())
                             .addFunctions(
-                                provisionMethods.mapNotNull { declaration ->
-                                    if (declaration.parameters.isEmpty()) {
-                                        FunSpec.builder(declaration.simpleName.asString())
-                                            .addModifiers(KModifier.OVERRIDE)
-                                            .returns((declaration.returnType!!.resolveToUnderlying().declaration as KSClassDeclaration).asClassName())
-                                            .addCode("return TODO()")
-                                            .build()
-                                    } else {
-                                        logger.error("Provision methods must not have any parameters", declaration)
-                                        null
-                                    }
+                                component.provisionFunctions().map { declaration ->
+                                    FunSpec.builder(declaration.simpleName.asString())
+                                        .addModifiers(KModifier.OVERRIDE)
+                                        .returns(declaration.returnTypeKey().asTypeName())
+                                        .addCode("return TODO()")
+                                        .build()
                                 }.toList()
                             )
                             .addProperties(
-                                provisionProperties.mapNotNull { declaration ->
-                                    if (!declaration.isMutable) {
-                                        PropertySpec.builder(declaration.simpleName.asString(),
-                                            (declaration.type.resolveToUnderlying().declaration as KSClassDeclaration).asClassName())
-                                            .addModifiers(KModifier.OVERRIDE)
-                                            .getter(FunSpec.getterBuilder().addCode("return TODO()").build())
-                                            .build()
-                                    } else {
-                                        logger.error("Provision property must not be mutable", declaration)
-                                        null
-                                    }
+                                component.provisionProperties().map { declaration ->
+                                    PropertySpec.builder(declaration.simpleName.asString(), declaration.type.resolveToUnderlying().toKey().asTypeName())
+                                        .addModifiers(KModifier.OVERRIDE)
+                                        .getter(FunSpec.getterBuilder().addCode("return TODO()").build())
+                                        .build()
                                 }.toList()
                             )
                             .build()
@@ -240,6 +291,17 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
         )
     }
 
+    private fun KSAnnotation.typeListParameter(property: KProperty<*>): List<KSType> {
+        @Suppress("UNCHECKED_CAST")
+        return findParameter(property)!!.value as List<KSType>
+    }
+
+    private fun KSAnnotation.findParameter(property: KProperty<*>): KSValueArgument? {
+        return arguments.find { it.name?.asString() == property.name }
+    }
+
+    private fun KSPropertyDeclaration.typeKey() = type.resolveToUnderlying().toKey()
+
     private fun KSFunctionDeclaration.returnTypeKey() = returnType!!.resolveToUnderlying().toKey()
 
     private fun KSType.toKey(): Key {
@@ -252,6 +314,33 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
         }
 
         return Key(type = this, qualifier = qualifiers.firstOrNull())
+    }
+
+    private fun KSClassDeclaration.provisionFunctions(): Sequence<KSFunctionDeclaration> {
+        return getAllFunctions()
+            .filter { it.isAbstract }
+            .mapNotNull {
+                if (it.parameters.isNotEmpty()) {
+                    logger.error("Component provision function must not have any parameters", it)
+                    null
+                } else {
+                    it
+                }
+            }
+    }
+
+
+    private fun KSClassDeclaration.provisionProperties(): Sequence<KSPropertyDeclaration> {
+        return getAllProperties()
+            .filter { it.isAbstract() }
+            .mapNotNull {
+                if (it.isMutable) {
+                    logger.error("Component provision property must be readonly", it)
+                    null
+                } else {
+                    it
+                }
+            }
     }
 }
 
