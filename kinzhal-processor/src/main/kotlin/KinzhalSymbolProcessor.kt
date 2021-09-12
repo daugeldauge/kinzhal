@@ -437,16 +437,15 @@ private fun Binding.componentProviderName(): String? {
     }
 }
 
-private fun ResolvedBinding.providerInitializer(): String {
+private fun ResolvedBinding.providerInitializer(): CodeBlock {
     return when (binding) {
         is FactoryBinding -> {
-            // TODO CodeBlock
-            val factoryCall = binding.factoryPackage + "." + binding.factoryName + dependencies.joinToString(separator = ", ", prefix = "(", postfix = ")") { it.providerReference() }
-            if (binding.scoped) "lazy($factoryCall)" else factoryCall
+            val factoryCall = "%T" + dependencies.joinToString(separator = ", ", prefix = "(", postfix = ")") { it.providerReference() }
+            CodeBlock.of(if (binding.scoped) "lazy($factoryCall)" else factoryCall, ClassName(binding.factoryPackage, binding.factoryName))
         }
-        is DelegatedBinding -> dependencies.first().providerReference()
-        is ComponentDependencyFunctionBinding -> ""
-        is ComponentDependencyPropertyBinding -> ""
+        is DelegatedBinding -> CodeBlock.of(dependencies.first().providerReference())
+        is ComponentDependencyFunctionBinding -> error("impossible")
+        is ComponentDependencyPropertyBinding -> error("impossible")
     }
 }
 
