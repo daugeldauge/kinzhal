@@ -43,11 +43,13 @@ class DelegatedBinding(
 class ComponentDependencyFunctionBinding(
     override val key: Key,
     override val declaration: KSFunctionDeclaration,
+    val dependenciesInterface: KSType,
 ) : Binding
 
 class ComponentDependencyPropertyBinding(
     override val key: Key,
     override val declaration: KSPropertyDeclaration,
+    val dependenciesInterface: KSType,
 ) : Binding
 
 class ComponentDependency(
@@ -57,16 +59,17 @@ class ComponentDependency(
 
 sealed interface RequestedKey {
     val key: Key
+    val declaration: KSDeclaration
 }
 
 class ComponentFunctionRequestedKey(
     override val key: Key,
-    val declaration: KSFunctionDeclaration,
+    override val declaration: KSFunctionDeclaration,
 ) : RequestedKey
 
 class ComponentPropertyRequestedKey(
     override val key: Key,
-    val declaration: KSPropertyDeclaration,
+    override val declaration: KSPropertyDeclaration,
 ) : RequestedKey
 
 class UnresolvedBindingGraph(
@@ -82,11 +85,17 @@ class ResolvedBinding(
     val dependencies: List<Binding>,
 )
 
+class ResolvedRequestedKey(
+    val requested: RequestedKey,
+    val binding: Binding,
+)
+
+
 class ResolvedBindingGraph(
     val component: KSClassDeclaration,
     val componentDependencies: List<KSType>,
     val bindings: List<ResolvedBinding>, // topologically sorted required bindings
-    val requested: List<RequestedKey>,
+    val requested: List<ResolvedRequestedKey>,
 )
 
 
@@ -114,8 +123,6 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
                     logger.error("@Component can't be applied to $component: must be an interface", component)
                     return@forEach
                 }
-
-                logger.warn(component.annotations.joinToString { it.annotationType.toString() }, component)
 
                 val componentAnnotation = component.findAnnotation<Component>()!!
 
@@ -172,10 +179,10 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
                         }
 
                         val functions = declaration.provisionFunctions()
-                            .map { ComponentDependencyFunctionBinding(it.returnTypeKey(), it) }
+                            .map { ComponentDependencyFunctionBinding(it.returnTypeKey(), it, type) }
 
                         val properties = declaration.provisionProperties()
-                            .map { ComponentDependencyPropertyBinding(it.typeKey(), it) }
+                            .map { ComponentDependencyPropertyBinding(it.typeKey(), it, type) }
 
                         ComponentDependency(
                             type = type,
@@ -233,23 +240,37 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
                         }
                     )
                     .addProperties(bindings.mapNotNull { it.asPropertySpec() })
-                    .addFunctions(
-                        component.provisionFunctions().map { declaration ->
-                            FunSpec.builder(declaration.simpleName.asString())
-                                .addModifiers(KModifier.OVERRIDE)
-                                .returns(declaration.returnTypeKey().asTypeName())
-                                .addCode("return TODO()")
-                                .build()
-                        }.toList()
-                    )
-                    .addProperties(
-                        component.provisionProperties().map { declaration ->
-                            PropertySpec.builder(declaration.simpleName.asString(), declaration.type.resolveToUnderlying().toKey().asTypeName())
-                                .addModifiers(KModifier.OVERRIDE)
-                                .getter(FunSpec.getterBuilder().addCode("return TODO()").build())
-                                .build()
-                        }.toList()
-                    )
+                    .apply {
+                        requested.forEach { resolved ->
+                            val providerReference = resolved.binding.providerReference()
+                            val providerReferenceToCall = if (providerReference.contains("::")) {
+                                "($providerReference)"
+                            } else {
+                                providerReference
+                            }
+                            val body = "return $providerReferenceToCall()"
+                            val name = resolved.requested.declaration.simpleName.asString()
+
+                            when (resolved.requested) {
+                                is ComponentFunctionRequestedKey -> {
+                                    addFunction(
+                                        FunSpec.builder(name)
+                                            .addModifiers(KModifier.OVERRIDE)
+                                            .returns(resolved.requested.declaration.returnTypeKey().asTypeName())
+                                            .addCode(body)
+                                            .build()
+                                    )
+                                }
+                                is ComponentPropertyRequestedKey -> addProperty(
+                                    PropertySpec.builder(name, resolved.requested.declaration.type.resolveToUnderlying().toKey().asTypeName())
+                                        .addModifiers(KModifier.OVERRIDE)
+                                        .getter(FunSpec.getterBuilder().addCode(body).build())
+                                        .build()
+                                )
+                            }
+
+                        }
+                    }
                     .build()
             )
         }
@@ -421,17 +442,16 @@ private fun ResolvedBinding.providerInitializer(): String {
 private fun Binding.providerReference(): String {
     // TODO cleanup
     return when (this) {
-        is FactoryBinding -> if (scoped) "(${componentProviderName()!!}::value)" else componentProviderName()!!
+        is FactoryBinding -> if (scoped) "${componentProviderName()!!}::value" else componentProviderName()!!
         is DelegatedBinding -> componentProviderName()!!
-        is ComponentDependencyFunctionBinding -> "(appDependencies::${declaration.simpleName.asString()})"
-        is ComponentDependencyPropertyBinding -> "(appDependencies::${declaration.simpleName.asString()})"
+        is ComponentDependencyFunctionBinding -> "${dependenciesInterface.componentDependencyPropertyName()}::${declaration.simpleName.asString()}"
+        is ComponentDependencyPropertyBinding -> "${dependenciesInterface.componentDependencyPropertyName()}::${declaration.simpleName.asString()}"
     }
 }
 
 private fun Key.lowercaseName() = type.declaration.simpleName.asString().replaceFirstChar { it.lowercase() }
 
 private fun KSType.componentDependencyPropertyName() = declaration.simpleName.asString().replaceFirstChar { it.lowercase() }
-
 
 private fun UnresolvedBindingGraph.resolve(logger: KSPLogger): ResolvedBindingGraph {
 
@@ -490,8 +510,8 @@ private fun UnresolvedBindingGraph.resolve(logger: KSPLogger): ResolvedBindingGr
     return ResolvedBindingGraph(
         component = component,
         componentDependencies = componentDependencies.map { it.type },
-        bindings = black.map { it.binding() }.map { ResolvedBinding(it, it.dependencies.map { it.binding() }) },
-        requested = requested,
+        bindings = black.map(Key::binding).map { ResolvedBinding(it, it.dependencies.map(Key::binding)) },
+        requested = requested.map { ResolvedRequestedKey(it, it.key.binding()) },
     )
 }
 
