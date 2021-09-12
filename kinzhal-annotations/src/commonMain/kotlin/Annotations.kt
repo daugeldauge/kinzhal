@@ -10,3 +10,6 @@ annotation class Inject
 
 @Retention(AnnotationRetention.SOURCE)
 annotation class Scope
+
+@Retention(AnnotationRetention.SOURCE)
+annotation class Qualifier

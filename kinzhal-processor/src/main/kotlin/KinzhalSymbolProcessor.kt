@@ -2,6 +2,7 @@ package com.daugeldauge.kinzhal.processor
 
 import com.daugeldauge.kinzhal.Component
 import com.daugeldauge.kinzhal.Inject
+import com.daugeldauge.kinzhal.Qualifier
 import com.google.devtools.ksp.isAbstract
 import com.google.devtools.ksp.isConstructor
 import com.google.devtools.ksp.processing.*
@@ -9,36 +10,69 @@ import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.*
 import kotlin.reflect.KClass
 
-// TODO handle generics
-// TODO support qualifiers
-
-data class Binding(
-    val qualifiedName: String,
-    val qualifier: String? = null,
+data class Key(
+    val type: KSType,
+    val qualifier: KSType? = null,
 )
 
-class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private val logger: KSPLogger) :
-    SymbolProcessor {
+sealed interface Binding {
+    val key: Key
+}
+
+class FactoryBinding(
+    override val key: Key,
+    val scoped: Boolean,
+    val dependencies: List<Key>,
+    val factoryQualifiedName: String,
+) : Binding
+
+class ComponentDependencyBinding(
+    override val key: Key,
+    val declaration: KSDeclaration, // Function or property
+) : Binding
+
+class ComponentDependency(
+    val type: KSType,
+    val bindings: Set<ComponentDependencyBinding>,
+)
+
+class RequestedKey(
+    val binding: Key,
+    val declaration: KSDeclaration, // Function or property
+)
+
+class UnresolvedBindingGraph(
+    val component: KSClassDeclaration,
+    val factoryBindings: List<FactoryBinding>, // from constructor injected and @Provides
+    val componentDependencies: List<ComponentDependency>,
+    val delegated: Map<Key, Key>, // from @Binds
+    val requested: List<RequestedKey>, // component provision methods for now
+)
+
+class ResolvedBindingGraph(
+    val component: KSClassDeclaration,
+    val componentDependencies: List<KSType>,
+    val bindings: List<Binding>, // topologically sorted required bindings
+    val requestedKey: List<RequestedKey>,
+)
+
+
+class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private val logger: KSPLogger) : SymbolProcessor {
 
     override fun process(resolver: Resolver): List<KSAnnotated> {
 
         val constructorInjectedBindings = resolver.getSymbolsWithAnnotation(Inject::class.requireQualifiedName())
             .mapNotNull { injectable ->
                 if (injectable !is KSFunctionDeclaration || !injectable.isConstructor()) {
-                    logger.error("@Inject can't be applied to $injectable: only constructor injection supported",
-                        injectable)
+                    logger.error("@Inject can't be applied to $injectable: only constructor injection supported", injectable)
                     return@mapNotNull null
                 }
 
-                val injectableType = injectable.returnType!!.resolveToUnderlying()
+                val injectableKey = injectable.returnTypeKey()
 
-                val dependencies = injectable.parameters.map { it.type.resolveToUnderlying() }
-
-                generateFactory(injectableType, injectable) { add("%T", injectableType.asTypeName()) }
-
-                injectableType.toBinding() to dependencies.map { it.toBinding() }
+                generateFactory(injectableKey, injectable) { add("%T", injectableKey.asTypeName()) }
             }
-            .toMap()
+            .toList()
 
         resolver.getSymbolsWithAnnotation(Component::class.requireQualifiedName())
             .forEach { component ->
@@ -50,8 +84,7 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
 
                 logger.warn(component.annotations.joinToString { it.annotationType.toString() }, component)
 
-                val annotation =
-                    component.annotations.find { it.annotationType.resolveToUnderlying().declaration.qualifiedName?.asString() == Component::class.qualifiedName }!!
+                val annotation = component.findAnnotation<Component>()!!
 
                 @Suppress("UNCHECKED_CAST")
                 val modules = (annotation.arguments
@@ -62,14 +95,17 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
                     module.declarations.filterIsInstance<KSClassDeclaration>().find { it.isCompanionObject }
                 }
 
-                modulesWithCompanions.forEach { module ->
+                val providerBindings = modulesWithCompanions.flatMap { module ->
                     module.declarations.filterIsInstance<KSFunctionDeclaration>()
                         .filter { !it.isAbstract && !it.isConstructor() }
-                        .forEach { providerMethod ->
+                        .map { providerMethod ->
 
-                            val injectableType = providerMethod.returnType!!.resolveToUnderlying()
+                            val injectableKey = providerMethod.returnTypeKey()
 
-                            generateFactory(injectableType, providerMethod) { add("%T.${providerMethod.simpleName.asString()}", module.asClassName()) }
+                            generateFactory(injectableKey,
+                                providerMethod) {
+                                add("%T.${providerMethod.simpleName.asString()}", module.asClassName())
+                            }
                         }
                 }
 
@@ -128,16 +164,20 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
     }
 
     private fun generateFactory(
-        injectableType: KSType,
+        injectableKey: Key,
         sourceDeclaration: KSFunctionDeclaration,
         addCreateInstanceCall: CodeBlock.Builder.() -> Unit,
-    ) {
+    ): FactoryBinding {
 
-        val packageName = injectableType.declaration.packageName.asString()
-        val factoryName = injectableType.declaration.simpleName.asString() + "Factory"
+        val packageName = injectableKey.type.declaration.packageName.asString()
+        val factoryName = injectableKey.type.declaration.simpleName.asString() + "Factory"
 
-        val providers: List<Pair<String, TypeName>> = sourceDeclaration.parameters.map {
-            ("${it.name!!.asString()}Provider") to LambdaTypeName.get(returnType = (it.type.resolveToUnderlying().declaration as KSClassDeclaration).asClassName())
+        val dependencies = sourceDeclaration.parameters.map {
+            ("${it.name!!.asString()}Provider") to it.type.resolveToUnderlying().toKey()
+        }
+
+        val providers: List<Pair<String, TypeName>> = dependencies.map { (providerName, key) ->
+            providerName to LambdaTypeName.get(returnType = key.asTypeName())
         }
 
         codeGenerator.newFile(
@@ -164,11 +204,11 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
                             )
                             .build()
                     )
-                    .addSuperinterface(LambdaTypeName.get(returnType = injectableType.asTypeName()))
+                    .addSuperinterface(LambdaTypeName.get(returnType = injectableKey.asTypeName()))
                     .addProperties(properties)
                     .addFunction(
                         FunSpec.builder("invoke")
-                            .returns(injectableType.asTypeName())
+                            .returns(injectableKey.asTypeName())
                             .addModifiers(KModifier.OVERRIDE)
                             .addCode(CodeBlock.builder().apply {
                                 add("return ")
@@ -191,7 +231,32 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
                     .build()
             )
         }
+
+        return FactoryBinding(
+            key = injectableKey,
+            scoped = false, //TODO,
+            dependencies = dependencies.map { it.second },
+            factoryQualifiedName = factoryName,
+        )
     }
+
+    private fun KSFunctionDeclaration.returnTypeKey() = returnType!!.resolveToUnderlying().toKey()
+
+    private fun KSType.toKey(): Key {
+        val qualifiers = annotations.mapNotNull {
+            it.annotationType.resolveToUnderlying().declaration.findAnnotation<Qualifier>()?.annotationType?.resolveToUnderlying()
+        }.toList()
+
+        if (qualifiers.size > 1) {
+            logger.error("Multiple qualifiers not permitted", declaration)
+        }
+
+        return Key(type = this, qualifier = qualifiers.firstOrNull())
+    }
+}
+
+private inline fun <reified T> KSAnnotated.findAnnotation(): KSAnnotation? {
+    return annotations.find { it.annotationType.resolveToUnderlying().declaration.qualifiedName?.asString() == T::class.qualifiedName }
 }
 
 private inline fun CodeGenerator.newFile(
@@ -214,8 +279,8 @@ private inline fun CodeGenerator.newFile(
     }
 }
 
-private fun KSType.asTypeName(): TypeName {
-    return (declaration as KSClassDeclaration).asClassName()
+private fun Key.asTypeName(): TypeName {
+    return (type.declaration as KSClassDeclaration).asClassName() // TODO
 }
 
 private fun KSClassDeclaration.asClassName(): ClassName {
@@ -227,7 +292,7 @@ private fun KSClassDeclaration.asClassName(): ClassName {
 
 private fun KClass<*>.requireQualifiedName() = qualifiedName!!
 
-private fun KSType.toBinding() = Binding(declaration.qualifiedName!!.asString())
+private fun KSType.classDeclaration() = declaration as KSClassDeclaration
 
 private fun KSTypeReference.resolveToUnderlying(): KSType {
     var candidate = resolve()
