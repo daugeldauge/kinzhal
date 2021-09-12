@@ -8,6 +8,8 @@ import com.daugeldauge.kinzhal.sample.network.LastFmApi
 @KinzhalScope
 annotation class AppScope
 
+class Application
+
 interface ContentResolver
 
 @AppScope

@@ -10,7 +10,7 @@ import com.daugeldauge.kinzhal.sample.network.SpotifyApi
 annotation class MainActivityScope
 
 @MainActivityScope
-class Router @JavaxInject @KinzhalInject constructor()
+class Router @JavaxInject @KinzhalInject constructor(application: Application)
 
 class ArtistsPresenter @JavaxInject @KinzhalInject constructor(
     private val database: Database,
