@@ -1,3 +1,5 @@
+@file:Suppress("UNUSED_PARAMETER")
+
 package com.daugeldauge.kinzhal.sample
 
 @DaggerModule

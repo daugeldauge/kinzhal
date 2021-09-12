@@ -14,6 +14,7 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 
 // TODO scope validation
+// TODO module factory naming
 
 data class Key(
     val type: KSType,
@@ -512,6 +513,7 @@ private fun UnresolvedBindingGraph.resolve(logger: KSPLogger): ResolvedBindingGr
         when {
             black.contains(binding.key) -> Unit
             grey.contains(binding.key) -> {
+                grey.addLast(binding.key)
                 logger.error("Dependency cycle detected: \n    ${grey.joinToString(separator = " -> ")}", binding.declaration)
             }
             else -> { // white
