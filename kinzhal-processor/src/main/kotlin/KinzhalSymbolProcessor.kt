@@ -18,23 +18,35 @@ data class Key(
 
 sealed interface Binding {
     val key: Key
+    val declaration: KSDeclaration
+    val dependencies: List<Key>
+        get() = emptyList()
 }
 
 class FactoryBinding(
     override val key: Key,
+    override val declaration: KSDeclaration,
+    override val dependencies: List<Key>,
     val scoped: Boolean,
-    val dependencies: List<Key>,
     val factoryQualifiedName: String,
 ) : Binding
 
+class DelegatedBinding(
+    override val key: Key,
+    override val declaration: KSFunctionDeclaration,
+    delegatedTo: Key,
+) : Binding {
+    override val dependencies = listOf(delegatedTo)
+}
+
 class ComponentDependencyFunctionBinding(
     override val key: Key,
-    val declaration: KSFunctionDeclaration,
+    override val declaration: KSFunctionDeclaration,
 ) : Binding
 
 class ComponentDependencyPropertyBinding(
     override val key: Key,
-    val declaration: KSPropertyDeclaration,
+    override val declaration: KSPropertyDeclaration,
 ) : Binding
 
 class ComponentDependency(
@@ -56,16 +68,11 @@ class ComponentPropertyRequestedKey(
     val declaration: KSPropertyDeclaration,
 ) : RequestedKey
 
-class DelegatedKey(
-    val key: Key,
-    val delegatedTo: Key,
-)
-
 class UnresolvedBindingGraph(
     val component: KSClassDeclaration,
     val factoryBindings: List<FactoryBinding>, // from constructor injected and @Provides
     val componentDependencies: List<ComponentDependency>,
-    val delegated: List<DelegatedKey>, // from @Binds
+    val delegated: List<DelegatedBinding>, // from @Binds
     val requested: List<RequestedKey>, // component provision methods for now
 )
 
@@ -73,7 +80,7 @@ class ResolvedBindingGraph(
     val component: KSClassDeclaration,
     val componentDependencies: List<KSType>,
     val bindings: List<Binding>, // topologically sorted required bindings
-    val requestedKey: List<RequestedKey>,
+    val requested: List<RequestedKey>,
 )
 
 
@@ -135,9 +142,16 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
                                 return@mapNotNull null
                             }
 
+                            val typeKey = bindingFunction.returnTypeKey()
                             val parameterKey = bindingFunction.parameters.first().type.resolveToUnderlying().toKey()
-                            DelegatedKey(
-                                key = bindingFunction.returnTypeKey(),
+
+                            if (!typeKey.type.isAssignableFrom(parameterKey.type))  {
+                                logger.error("Binding function return type must be assignable from parameter", bindingFunction)
+                            }
+
+                            DelegatedBinding(
+                                key = typeKey,
+                                declaration = bindingFunction,
                                 delegatedTo = parameterKey,
                             )
                         }
@@ -175,7 +189,7 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
                     componentDependencies = componentDependencies,
                     delegated = delegated,
                     requested = (requestedFunctionKeys + requestedPropertyKeys).toList(),
-                )
+                ).resolve(logger)
 
                 val generatedComponentName = "Kinzhal${component.simpleName.asString()}"
 
@@ -285,6 +299,7 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
 
         return FactoryBinding(
             key = injectableKey,
+            declaration = sourceDeclaration,
             scoped = false, //TODO,
             dependencies = dependencies.map { it.second },
             factoryQualifiedName = factoryName,
@@ -342,6 +357,41 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
                 }
             }
     }
+}
+
+private fun UnresolvedBindingGraph.resolve(logger: KSPLogger): ResolvedBindingGraph? {
+
+    val allBindings = mutableMapOf<Key, Binding>()
+
+    fun add(binding: Binding) {
+        val previous = allBindings.put(binding.key, binding)
+
+        if (previous != null) {
+            logger.error("Duplicated binding: ${binding.key} already provided in ${previous.declaration.location}", binding.declaration)
+        }
+    }
+
+    factoryBindings.forEach(::add)
+
+    componentDependencies.forEach { dependency ->
+        dependency.bindings.forEach(::add)
+    }
+
+    allBindings.forEach { (key, binding) ->
+        binding.dependencies.forEach {
+            if (!allBindings.contains(it)) {
+                logger.error("Missing binding: $key was not provided", binding.declaration)
+                return null
+            }
+        }
+    }
+
+    return ResolvedBindingGraph(
+        component = component,
+        componentDependencies = componentDependencies.map { it.type },
+        bindings = emptyList(),
+        requested = requested,
+    )
 }
 
 private inline fun <reified T> KSAnnotated.findAnnotation(): KSAnnotation? {
