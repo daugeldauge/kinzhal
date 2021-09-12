@@ -2,6 +2,7 @@
 
 package com.daugeldauge.kinzhal.sample
 
+import com.daugeldauge.kinzhal.Qualifier
 import com.daugeldauge.kinzhal.sample.network.LastFmApi
 
 @JavaxScope
@@ -18,4 +19,7 @@ class Database @JavaxInject @KinzhalInject constructor(contentResolver: ContentR
 @AppScope
 class ArtistImagesStorage @JavaxInject @KinzhalInject constructor()
 
-class AuthPresenter @JavaxInject @KinzhalInject constructor(database: Database, lastFmApi: LastFmApi)
+@Qualifier
+annotation class ScreenId
+
+class AuthPresenter @JavaxInject @KinzhalInject constructor(database: Database, lastFmApi: LastFmApi, @ScreenId screenId: String)

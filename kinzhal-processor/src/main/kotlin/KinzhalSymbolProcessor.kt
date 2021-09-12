@@ -167,7 +167,7 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
                             }
 
                             val typeKey = bindingFunction.returnTypeKey()
-                            val parameterKey = bindingFunction.parameters.first().type.resolveToUnderlying().toKey()
+                            val parameterKey = bindingFunction.parameters.first().toKey()
 
                             if (!typeKey.type.isAssignableFrom(parameterKey.type)) {
                                 logger.error("Binding function return type must be assignable from parameter", bindingFunction)
@@ -273,7 +273,7 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
                                     )
                                 }
                                 is ComponentPropertyRequestedKey -> addProperty(
-                                    PropertySpec.builder(name, resolved.requested.declaration.type.resolveToUnderlying().toKey().asTypeName())
+                                    PropertySpec.builder(name, resolved.requested.declaration.typeKey().asTypeName())
                                         .addModifiers(KModifier.OVERRIDE)
                                         .getter(FunSpec.getterBuilder().addCode(body).build())
                                         .build()
@@ -298,7 +298,7 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
         val factoryName = injectableKey.type.declaration.simpleName.asString() + "Factory"
 
         val dependencies = sourceDeclaration.parameters.map {
-            ("${it.name!!.asString()}Provider") to it.type.resolveToUnderlying().toKey()
+            ("${it.name!!.asString()}Provider") to it.type.toKey(it.annotations)
         }
 
         val providers: List<Pair<String, TypeName>> = dependencies.map { (providerName, key) ->
@@ -378,20 +378,24 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
         return arguments.find { it.name?.asString() == property.name }
     }
 
-    private fun KSPropertyDeclaration.typeKey() = type.resolveToUnderlying().toKey()
+    private fun KSPropertyDeclaration.typeKey() = type.toKey(annotations)
 
-    private fun KSFunctionDeclaration.returnTypeKey() = returnType!!.resolveToUnderlying().toKey()
+    private fun KSValueParameter.toKey(): Key = type.toKey(annotations)
 
-    private fun KSType.toKey(): Key {
+    private fun KSFunctionDeclaration.returnTypeKey(): Key = returnType!!.toKey(annotations)
+
+    private fun KSTypeReference.toKey(annotations: Sequence<KSAnnotation>): Key {
         val qualifiers = annotations.mapNotNull {
-            it.annotationType.resolveToUnderlying().declaration.findAnnotation<Qualifier>()?.annotationType?.resolveToUnderlying()
+            it.annotationType.resolveToUnderlying().takeIf { resolved ->
+                resolved.declaration.findAnnotation<Qualifier>() != null
+            }
         }.toList()
 
         if (qualifiers.size > 1) {
-            logger.error("Multiple qualifiers not permitted", declaration)
+            logger.error("Multiple qualifiers not permitted", this)
         }
 
-        return Key(type = this, qualifier = qualifiers.firstOrNull())
+        return Key(type = this.resolveToUnderlying(), qualifier = qualifiers.firstOrNull())
     }
 
     private fun KSClassDeclaration.provisionFunctions(): Sequence<KSFunctionDeclaration> {

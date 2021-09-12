@@ -40,7 +40,8 @@ class AppComponentImpl(private val appDependencies: AppDependencies) : AppCompon
     private val contentResolverProvider = contentResolverLazy::value
     private val databaseLazy = lazy(DatabaseFactory(contentResolverProvider))
     private val lastFmKtorApiProvider = LastFmKtorApiFactory(httpClientProvider)
-    private val authPresenterProvider = AuthPresenterFactory(databaseLazy::value, lastFmKtorApiProvider)
+    private val stringProvider = StringFactory()
+    private val authPresenterProvider = AuthPresenterFactory(databaseLazy::value, lastFmKtorApiProvider, stringProvider)
     private val deezerKtorApiProvider = DeezerKtorApiFactory(httpClientProvider)
     private val deezerApiProvider = deezerKtorApiProvider
     private val spotifyProvider = SpotifyKtorApiFactory(httpClientProvider)
