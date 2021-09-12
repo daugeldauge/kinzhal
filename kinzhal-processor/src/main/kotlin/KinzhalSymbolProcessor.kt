@@ -3,13 +3,17 @@ package com.daugeldauge.kinzhal.processor
 import com.daugeldauge.kinzhal.Component
 import com.daugeldauge.kinzhal.Inject
 import com.daugeldauge.kinzhal.Qualifier
+import com.daugeldauge.kinzhal.Scope
 import com.google.devtools.ksp.isAbstract
 import com.google.devtools.ksp.isConstructor
 import com.google.devtools.ksp.processing.*
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.*
+import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
+
+// TODO scope validation
 
 data class Key(
     val type: KSType,
@@ -77,7 +81,7 @@ class UnresolvedBindingGraph(
     val factoryBindings: List<FactoryBinding>, // from constructor injected and @Provides
     val componentDependencies: List<ComponentDependency>,
     val delegated: List<DelegatedBinding>, // from @Binds
-    val requested: List<RequestedKey>, // component provision methods for now
+    val requested: List<RequestedKey>, // component provision functions/properties for now
 )
 
 class ResolvedBinding(
@@ -112,7 +116,7 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
 
                 val injectableKey = injectable.returnTypeKey()
 
-                generateFactory(injectableKey, injectable) { add("%T", injectableKey.asTypeName()) }
+                generateFactory(injectableKey, injectableKey.type.declaration.annotations, injectable) { add("%T", injectableKey.asTypeName()) }
             }
             .toList()
 
@@ -139,8 +143,7 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
 
                             val injectableKey = providerFunction.returnTypeKey()
 
-                            generateFactory(injectableKey,
-                                providerFunction) {
+                            generateFactory(injectableKey, providerFunction.annotations, providerFunction) {
                                 add("%T.${providerFunction.simpleName.asString()}", module.asClassName())
                             }
                         }
@@ -278,6 +281,7 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
 
     private fun generateFactory(
         injectableKey: Key,
+        annotations: Sequence<KSAnnotation>,
         sourceDeclaration: KSFunctionDeclaration,
         addCreateInstanceCall: CodeBlock.Builder.() -> Unit,
     ): FactoryBinding {
@@ -348,7 +352,9 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
         return FactoryBinding(
             key = injectableKey,
             declaration = sourceDeclaration,
-            scoped = false, //TODO,
+            scoped = annotations.mapNotNull {
+                it.annotationType.resolveToUnderlying().declaration.findAnnotation<Scope>()?.annotationType?.resolveToUnderlying()
+            }.toList().isNotEmpty(),
             dependencies = dependencies.map { it.second },
             factoryName = factoryName,
             factoryPackage = packageName,
@@ -411,7 +417,12 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
 private fun ResolvedBinding.asPropertySpec(): PropertySpec? {
     val name = binding.componentProviderName() ?: return null
 
-    return PropertySpec.builder(name, LambdaTypeName.get(returnType = binding.key.asTypeName()), KModifier.PRIVATE)
+    val keyType = binding.key.asTypeName()
+    val type = when {
+        binding is FactoryBinding && binding.scoped -> Lazy::class.asTypeName().parameterizedBy(keyType)
+        else -> LambdaTypeName.get(returnType = keyType)
+    }
+    return PropertySpec.builder(name, type, KModifier.PRIVATE)
         .initializer(providerInitializer())
         .build()
 }
@@ -479,6 +490,7 @@ private fun UnresolvedBindingGraph.resolve(logger: KSPLogger): ResolvedBindingGr
 
     // TODO think about optimizing allBinding lookups
 
+    // Topological sort
     val white = requested.map { it.key }.toMutableList()
     val grey = ArrayDeque<Key>()
     val black = linkedSetOf<Key>()
