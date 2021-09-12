@@ -3,7 +3,6 @@ package com.daugeldauge.kinzhal.processor
 import com.daugeldauge.kinzhal.Component
 import com.daugeldauge.kinzhal.Inject
 import com.daugeldauge.kinzhal.Qualifier
-import com.google.devtools.ksp.closestClassDeclaration
 import com.google.devtools.ksp.isAbstract
 import com.google.devtools.ksp.isConstructor
 import com.google.devtools.ksp.processing.*
@@ -29,7 +28,8 @@ class FactoryBinding(
     override val declaration: KSDeclaration,
     override val dependencies: List<Key>,
     val scoped: Boolean,
-    val factoryQualifiedName: String,
+    val factoryName: String,
+    val factoryPackage: String,
 ) : Binding
 
 class DelegatedBinding(
@@ -77,10 +77,15 @@ class UnresolvedBindingGraph(
     val requested: List<RequestedKey>, // component provision methods for now
 )
 
+class ResolvedBinding(
+    val binding: Binding,
+    val dependencies: List<Binding>,
+)
+
 class ResolvedBindingGraph(
     val component: KSClassDeclaration,
     val componentDependencies: List<KSType>,
-    val bindings: List<Binding>, // topologically sorted required bindings
+    val bindings: List<ResolvedBinding>, // topologically sorted required bindings
     val requested: List<RequestedKey>,
 )
 
@@ -324,7 +329,8 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
             declaration = sourceDeclaration,
             scoped = false, //TODO,
             dependencies = dependencies.map { it.second },
-            factoryQualifiedName = factoryName,
+            factoryName = factoryName,
+            factoryPackage = packageName,
         )
     }
 
@@ -381,10 +387,10 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
     }
 }
 
-private fun Binding.asPropertySpec(): PropertySpec? {
-    val name = componentProviderName() ?: return null
+private fun ResolvedBinding.asPropertySpec(): PropertySpec? {
+    val name = binding.componentProviderName() ?: return null
 
-    return PropertySpec.builder(name, LambdaTypeName.get(returnType = key.asTypeName()), KModifier.PRIVATE)
+    return PropertySpec.builder(name, LambdaTypeName.get(returnType = binding.key.asTypeName()), KModifier.PRIVATE)
         .initializer(providerInitializer())
         .build()
 }
@@ -392,36 +398,37 @@ private fun Binding.asPropertySpec(): PropertySpec? {
 private fun Binding.componentProviderName(): String? {
     // TODO escaping?
     return when (this) {
-        is FactoryBinding -> key.componentProviderName() + if (scoped) "Lazy" else "Provider"
-        is DelegatedBinding -> key.componentProviderName() + "Provider"
+        is FactoryBinding -> key.lowercaseName() + if (scoped) "Lazy" else "Provider"
+        is DelegatedBinding -> key.lowercaseName() + "Provider"
         is ComponentDependencyFunctionBinding -> null
         is ComponentDependencyPropertyBinding -> null
     }
 }
 
-private fun Binding.providerInitializer(): String {
-    return when (this) {
+private fun ResolvedBinding.providerInitializer(): String {
+    return when (binding) {
         is FactoryBinding -> {
             // TODO CodeBlock
-            val factoryCall = factoryQualifiedName + dependencies.joinToString(separator = ", ", prefix = "(", postfix = ")") { it.componentProviderName() + "Provider" }
-            if (scoped) "lazy($factoryCall)" else factoryCall
+            val factoryCall = binding.factoryPackage + "." + binding.factoryName + dependencies.joinToString(separator = ", ", prefix = "(", postfix = ")") { it.providerReference() }
+            if (binding.scoped) "lazy($factoryCall)" else factoryCall
         }
-        is DelegatedBinding -> componentProviderName() + "Provider"
-        is ComponentDependencyFunctionBinding -> "(appDependencies::${declaration.simpleName.asString()})"
-        is ComponentDependencyPropertyBinding -> "(appDependencies::${declaration.simpleName.asString()})"
+        is DelegatedBinding -> dependencies.first().providerReference()
+        is ComponentDependencyFunctionBinding -> ""
+        is ComponentDependencyPropertyBinding -> ""
     }
 }
 
 private fun Binding.providerReference(): String {
+    // TODO cleanup
     return when (this) {
-        is FactoryBinding -> componentProviderName() + "Provider" + dependencies.joinToString(separator = ", ", prefix = "(", postfix = ")") { it.componentProviderName() + "Provider" }
-        is DelegatedBinding -> componentProviderName() + "Provider"
+        is FactoryBinding -> if (scoped) "(${componentProviderName()!!}::value)" else componentProviderName()!!
+        is DelegatedBinding -> componentProviderName()!!
         is ComponentDependencyFunctionBinding -> "(appDependencies::${declaration.simpleName.asString()})"
         is ComponentDependencyPropertyBinding -> "(appDependencies::${declaration.simpleName.asString()})"
     }
 }
 
-private fun Key.componentProviderName() = type.declaration.simpleName.asString().replaceFirstChar { it.lowercase() }
+private fun Key.lowercaseName() = type.declaration.simpleName.asString().replaceFirstChar { it.lowercase() }
 
 private fun KSType.componentDependencyPropertyName() = declaration.simpleName.asString().replaceFirstChar { it.lowercase() }
 
@@ -483,7 +490,7 @@ private fun UnresolvedBindingGraph.resolve(logger: KSPLogger): ResolvedBindingGr
     return ResolvedBindingGraph(
         component = component,
         componentDependencies = componentDependencies.map { it.type },
-        bindings = black.map { it.binding() },
+        bindings = black.map { it.binding() }.map { ResolvedBinding(it, it.dependencies.map { it.binding() }) },
         requested = requested,
     )
 }
