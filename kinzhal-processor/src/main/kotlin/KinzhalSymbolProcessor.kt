@@ -18,7 +18,15 @@ import kotlin.reflect.KProperty
 data class Key(
     val type: KSType,
     val qualifier: KSType? = null,
-)
+) {
+    override fun toString(): String {
+        return if (qualifier != null) {
+            "@$qualifier $type"
+        } else {
+            type.toString()
+        }
+    }
+}
 
 sealed interface Binding {
     val key: Key
