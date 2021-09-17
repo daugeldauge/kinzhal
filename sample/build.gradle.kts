@@ -1,27 +1,23 @@
 plugins {
     id("com.google.devtools.ksp") version "1.5.30-1.0.0"
-    kotlin("jvm")
-    kotlin("kapt")
+    kotlin("multiplatform")
 }
 
 repositories {
     mavenCentral()
 }
 
-dependencies {
-    implementation(kotlin("stdlib-jdk8"))
-    implementation(project(":kinzhal-annotations"))
-    implementation(project(":kinzhal-processor"))
-    ksp(project(":kinzhal-processor"))
-
-    implementation("com.google.dagger:dagger:2.38.1")
-    kapt("com.google.dagger:dagger-compiler:2.38.1") {
-        exclude(group = "com.google.devtools.ksp")
-    }
-}
-
 kotlin {
-    sourceSets.main {
-        kotlin.srcDir("$buildDir/generated/ksp/main/kotlin")
+    sourceSets {
+        val commonTest by getting {
+            dependencies {
+                implementation(project(":kinzhal-annotations"))
+                implementation(kotlin("test"))
+                configurations["ksp"].dependencies.add(project(":kinzhal-processor"))
+            }
+        }
     }
+
+    jvm()
+    ios()
 }
