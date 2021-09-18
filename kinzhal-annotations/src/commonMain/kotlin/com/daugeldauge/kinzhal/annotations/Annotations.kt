@@ -3,7 +3,7 @@ package com.daugeldauge.kinzhal.annotations
 import kotlin.reflect.KClass
 
 @Retention(AnnotationRetention.SOURCE)
-annotation class Component(val modules: Array<KClass<*>>, val dependencies: Array<KClass<*>> = [])
+annotation class Component(val modules: Array<KClass<*>> = [], val dependencies: Array<KClass<*>> = [])
 
 @Retention(AnnotationRetention.SOURCE)
 annotation class Inject

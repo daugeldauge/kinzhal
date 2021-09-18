@@ -3,6 +3,10 @@
 package com.daugeldauge.kinzhal.sample.graph.network
 
 import com.daugeldauge.kinzhal.annotations.Inject
+import com.daugeldauge.kinzhal.annotations.Scope
+
+@Scope
+annotation class HttpClientScope
 
 class HttpClient
 

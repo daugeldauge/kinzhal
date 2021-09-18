@@ -21,6 +21,7 @@ class GraphTests {
 
         assertSame(component.router, component.router)
         assertNotSame(component.createAuthPresenter(), component.createAuthPresenter())
+        assertNotSame(component.versions, component.versions)
 
     }
 }

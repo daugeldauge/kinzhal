@@ -1,6 +1,7 @@
 package com.daugeldauge.kinzhal.sample.graph
 
 import com.daugeldauge.kinzhal.annotations.Component
+import com.daugeldauge.kinzhal.sample.graph.network.HttpClientScope
 import com.daugeldauge.kinzhal.sample.graph.network.NetworkModule
 
 interface SuperComponent {
@@ -12,11 +13,13 @@ typealias Versions = Map<VersionCode, String>
 
 @AppScope
 @MainActivityScope
+@HttpClientScope
 @Component(modules = [
     NetworkModule::class,
     AppModule::class,
 ], dependencies = [
     AppDependencies::class,
+    ExternalComponent::class,
 ])
 interface AppComponent : SuperComponent {
 

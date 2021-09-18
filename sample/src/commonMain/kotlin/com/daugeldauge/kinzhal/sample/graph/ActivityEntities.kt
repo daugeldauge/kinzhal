@@ -11,7 +11,7 @@ import com.daugeldauge.kinzhal.sample.graph.network.SpotifyApi
 annotation class MainActivityScope
 
 @MainActivityScope
-class Router @Inject constructor(application: Application, versions: Versions)
+class Router @Inject constructor(application: Application, versions: Versions, musicPlayer: ExternalMusicPlayer)
 
 class ArtistsPresenter @Inject constructor(
     private val database: Database,
