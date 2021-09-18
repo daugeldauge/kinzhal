@@ -14,7 +14,7 @@ internal class KinzhalSymbolProcessorTest {
 
     @Rule
     @JvmField
-    var temporaryFolder: TemporaryFolder = TemporaryFolder()
+    var temporaryFolder = TemporaryFolder()
 
     @Test
     fun `duplicate binding error`() {
