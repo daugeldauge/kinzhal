@@ -1,8 +1,0 @@
-<component name="ArtifactManager">
-  <artifact type="jar" name="kinzhal-annotations-jvm-1.0-SNAPSHOT">
-    <output-path>$PROJECT_DIR$/kinzhal-annotations/build/libs</output-path>
-    <root id="archive" name="kinzhal-annotations-jvm-1.0-SNAPSHOT.jar">
-      <element id="module-output" name="kinzhal.kinzhal-annotations.jvmMain" />
-    </root>
-  </artifact>
-</component>
