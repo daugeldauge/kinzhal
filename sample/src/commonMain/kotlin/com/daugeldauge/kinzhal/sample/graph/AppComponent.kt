@@ -1,6 +1,6 @@
 package com.daugeldauge.kinzhal.sample.graph
 
-import com.daugeldauge.kinzhal.Component
+import com.daugeldauge.kinzhal.annotations.Component
 import com.daugeldauge.kinzhal.sample.graph.network.NetworkModule
 
 interface SuperComponent {

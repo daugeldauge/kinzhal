@@ -11,7 +11,7 @@ import kotlin.test.assertSame
 class GraphTests {
 
     @Test
-    fun `scoping`() {
+    fun `scoped deps aren't recreated in provision functions and vice versa`() {
 
         val component = KinzhalAppComponent(object : AppDependencies {
             override val application = Application()

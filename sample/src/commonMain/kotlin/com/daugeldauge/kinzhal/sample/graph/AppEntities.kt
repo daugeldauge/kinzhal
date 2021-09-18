@@ -2,9 +2,9 @@
 
 package com.daugeldauge.kinzhal.sample.graph
 
-import com.daugeldauge.kinzhal.Inject
-import com.daugeldauge.kinzhal.Qualifier
-import com.daugeldauge.kinzhal.Scope
+import com.daugeldauge.kinzhal.annotations.Inject
+import com.daugeldauge.kinzhal.annotations.Qualifier
+import com.daugeldauge.kinzhal.annotations.Scope
 import com.daugeldauge.kinzhal.sample.graph.network.LastFmApi
 
 @Scope

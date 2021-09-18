@@ -2,7 +2,7 @@
 
 package com.daugeldauge.kinzhal.sample.graph.network
 
-import com.daugeldauge.kinzhal.Inject
+import com.daugeldauge.kinzhal.annotations.Inject
 
 class HttpClient
 

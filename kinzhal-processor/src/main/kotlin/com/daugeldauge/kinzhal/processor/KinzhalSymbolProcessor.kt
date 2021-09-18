@@ -1,9 +1,9 @@
 package com.daugeldauge.kinzhal.processor
 
-import com.daugeldauge.kinzhal.Component
-import com.daugeldauge.kinzhal.Inject
-import com.daugeldauge.kinzhal.Qualifier
-import com.daugeldauge.kinzhal.Scope
+import com.daugeldauge.kinzhal.annotations.Component
+import com.daugeldauge.kinzhal.annotations.Inject
+import com.daugeldauge.kinzhal.annotations.Qualifier
+import com.daugeldauge.kinzhal.annotations.Scope
 import com.google.devtools.ksp.isAbstract
 import com.google.devtools.ksp.isConstructor
 import com.google.devtools.ksp.processing.*

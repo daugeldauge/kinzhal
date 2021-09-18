@@ -1,4 +1,4 @@
-package com.daugeldauge.kinzhal
+package com.daugeldauge.kinzhal.annotations
 
 import kotlin.reflect.KClass
 

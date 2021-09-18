@@ -1,4 +1,5 @@
-import com.daugeldauge.kinzhal.processor.KinzhalSymbolProcessorProvider
+package com.daugeldauge.kinzhal.processor
+
 import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.SourceFile
 import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
@@ -18,8 +19,8 @@ internal class KinzhalSymbolProcessorTest {
     @Test
     fun `duplicate binding error`() {
         expectError("Duplicated binding", kotlin("source.kt", """
-            import com.daugeldauge.kinzhal.Component
-            import com.daugeldauge.kinzhal.Inject
+            import com.daugeldauge.kinzhal.annotations.Component
+            import com.daugeldauge.kinzhal.annotations.Inject
             
             @Component(modules = [AppModule::class])
             interface AppComponent {
@@ -37,8 +38,8 @@ internal class KinzhalSymbolProcessorTest {
     @Test
     fun `missing binding error`() {
         expectError("Missing binding", kotlin("source.kt", """
-            import com.daugeldauge.kinzhal.Component
-            import com.daugeldauge.kinzhal.Inject
+            import com.daugeldauge.kinzhal.annotations.Component
+            import com.daugeldauge.kinzhal.annotations.Inject
             
             @Component
             interface AppComponent {
@@ -52,8 +53,8 @@ internal class KinzhalSymbolProcessorTest {
     @Test
     fun `component is not an interface error`() {
         expectError("@Component can't be applied to", kotlin("source.kt", """
-            import com.daugeldauge.kinzhal.Component
-            import com.daugeldauge.kinzhal.Inject
+            import com.daugeldauge.kinzhal.annotations.Component
+            import com.daugeldauge.kinzhal.annotations.Inject
             
             @Component
             abstract class AppComponent {
@@ -67,8 +68,8 @@ internal class KinzhalSymbolProcessorTest {
     @Test
     fun `binding function with multiple params error`() {
         expectError("Binding function must have exactly one parameter", kotlin("source.kt", """
-            import com.daugeldauge.kinzhal.Component
-            import com.daugeldauge.kinzhal.Inject
+            import com.daugeldauge.kinzhal.annotations.Component
+            import com.daugeldauge.kinzhal.annotations.Inject
             
             @Component(modules = [AppModule::class])
             interface AppComponent {
@@ -76,7 +77,7 @@ internal class KinzhalSymbolProcessorTest {
             }
             
             interface AppModule {
-                fun bindRepo(repo: Repo, whaat: Any): Any
+                fun bindRepo(repo: Repo, what: Any): Any
             }
             
             class Repo
@@ -86,8 +87,8 @@ internal class KinzhalSymbolProcessorTest {
     @Test
     fun `binding function return type not assignable from parameter error`() {
         expectError("Binding function return type must be assignable from parameter", kotlin("source.kt", """
-            import com.daugeldauge.kinzhal.Component
-            import com.daugeldauge.kinzhal.Inject
+            import com.daugeldauge.kinzhal.annotations.Component
+            import com.daugeldauge.kinzhal.annotations.Inject
             
             @Component(modules = [AppModule::class])
             interface AppComponent {
@@ -106,8 +107,8 @@ internal class KinzhalSymbolProcessorTest {
     @Test
     fun `component dependency not an interface error`() {
         expectError("Component dependency must be an interface", kotlin("source.kt", """
-            import com.daugeldauge.kinzhal.Component
-            import com.daugeldauge.kinzhal.Inject
+            import com.daugeldauge.kinzhal.annotations.Component
+            import com.daugeldauge.kinzhal.annotations.Inject
             
             @Component(dependencies = [AppDeps::class])
             interface AppComponent {
@@ -125,8 +126,8 @@ internal class KinzhalSymbolProcessorTest {
     @Test
     fun `dependency cycle error`() {
         expectError("Dependency cycle detected", kotlin("source.kt", """
-            import com.daugeldauge.kinzhal.Component
-            import com.daugeldauge.kinzhal.Inject
+            import com.daugeldauge.kinzhal.annotations.Component
+            import com.daugeldauge.kinzhal.annotations.Inject
             
             @Component(modules = [AppModule::class, LengthModule::class])
             interface AppComponent {
