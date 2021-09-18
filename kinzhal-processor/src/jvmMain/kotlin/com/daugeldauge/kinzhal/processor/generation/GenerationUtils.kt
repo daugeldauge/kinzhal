@@ -7,11 +7,13 @@ import com.daugeldauge.kinzhal.processor.model.DelegatedBinding
 import com.daugeldauge.kinzhal.processor.model.FactoryBinding
 import com.daugeldauge.kinzhal.processor.model.Key
 import com.daugeldauge.kinzhal.processor.model.ResolvedBinding
+import com.daugeldauge.kinzhal.processor.resolveToUnderlying
 import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.processing.Dependencies
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFile
 import com.google.devtools.ksp.symbol.KSType
+import com.google.devtools.ksp.symbol.Nullability
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 
@@ -94,7 +96,19 @@ internal fun KSClassDeclaration.asClassName(): ClassName {
 }
 
 internal fun Key.asTypeName(): TypeName {
-    return (type.declaration as KSClassDeclaration).asClassName() // TODO
+    return type.asTypeName()
+}
+
+private fun KSType.asTypeName(): TypeName {
+    val className = (declaration as KSClassDeclaration).asClassName()
+
+    return if (arguments.isNotEmpty()) {
+        className.parameterizedBy(arguments.mapNotNull {
+            it.type?.resolveToUnderlying()?.asTypeName()
+        })
+    } else {
+        className
+    }.copy(nullable = nullability == Nullability.NULLABLE)
 }
 
 internal fun String.capitalized(): String = replaceFirstChar { it.uppercase() }

@@ -3,6 +3,7 @@ package com.daugeldauge.kinzhal.sample
 import com.daugeldauge.kinzhal.sample.graph.AppDependencies
 import com.daugeldauge.kinzhal.sample.graph.Application
 import com.daugeldauge.kinzhal.sample.graph.KinzhalAppComponent
+import com.daugeldauge.kinzhal.sample.graph.Versions
 
 import kotlin.test.Test
 import kotlin.test.assertNotSame
@@ -15,6 +16,7 @@ class GraphTests {
 
         val component = KinzhalAppComponent(object : AppDependencies {
             override val application = Application()
+            override val versions: Versions = emptyMap()
         })
 
         assertSame(component.router, component.router)

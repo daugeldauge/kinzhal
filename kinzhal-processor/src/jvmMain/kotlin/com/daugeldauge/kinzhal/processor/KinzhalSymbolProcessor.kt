@@ -15,7 +15,6 @@ import com.google.devtools.ksp.processing.*
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.*
 import java.lang.IllegalStateException
-import kotlin.reflect.KProperty
 
 // TODO scope validation
 
