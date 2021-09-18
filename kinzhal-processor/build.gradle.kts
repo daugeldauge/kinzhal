@@ -1,5 +1,6 @@
 plugins {
     kotlin("jvm")
+    `publish-conventions`
 }
 
 repositories {

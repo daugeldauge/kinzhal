@@ -1,5 +1,6 @@
 plugins {
     kotlin("multiplatform")
+    `publish-conventions`
 }
 
 repositories {
