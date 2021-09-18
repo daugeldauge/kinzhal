@@ -5,6 +5,8 @@ import com.daugeldauge.kinzhal.sample.graph.Application
 import com.daugeldauge.kinzhal.sample.graph.KinzhalAppComponent
 
 import kotlin.test.Test
+import kotlin.test.assertNotSame
+import kotlin.test.assertSame
 
 class GraphTests {
 
@@ -15,8 +17,8 @@ class GraphTests {
             override val application = Application()
         })
 
-        assert(component.router === component.router)
-        assert(component.createAuthPresenter() === component.createAuthPresenter())
+        assertSame(component.router, component.router)
+        assertNotSame(component.createAuthPresenter(), component.createAuthPresenter())
 
     }
 }

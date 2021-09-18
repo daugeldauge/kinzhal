@@ -6,7 +6,6 @@
       <module name="kinzhal.commonTest" target="1.8" />
       <module name="kinzhal.jvmMain" target="1.8" />
       <module name="kinzhal.jvmTest" target="1.8" />
-      <module name="kinzhal.sample.commonMain" target="1.8" />
     </bytecodeTargetLevel>
   </component>
 </project>
