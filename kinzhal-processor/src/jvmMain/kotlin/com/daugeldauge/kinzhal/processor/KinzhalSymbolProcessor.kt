@@ -44,6 +44,8 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
             }
             .toList()
 
+        val knownModules = mutableMapOf<KSClassDeclaration, List<FactoryBinding>>() // TODO functionalize!
+
         resolver.getSymbolsWithAnnotation(Component::class.requireQualifiedName())
             .forEach { component ->
 
@@ -61,6 +63,9 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
                 }
 
                 val providerBindings = modulesWithCompanions.flatMap { module ->
+
+                    knownModules[module]?.let { return@flatMap it }
+
                     module.declarations.filterIsInstance<KSFunctionDeclaration>()
                         .filter { !it.isAbstract && !it.isConstructor() }
                         .map { providerFunction ->
@@ -78,6 +83,7 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
                                 factoryName = ClassName.bestGuess(module.qualifiedName!!.asString()).simpleNames.joinToString(separator = "") + providerName.capitalized() + "Factory",
                             )
                         }
+                        .toList().also { knownModules[module] = it }
                 }
 
                 val delegated = modulesWithCompanions.flatMap { module ->

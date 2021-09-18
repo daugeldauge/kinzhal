@@ -1,9 +1,6 @@
 package com.daugeldauge.kinzhal.sample
 
-import com.daugeldauge.kinzhal.sample.graph.AppDependencies
-import com.daugeldauge.kinzhal.sample.graph.Application
-import com.daugeldauge.kinzhal.sample.graph.KinzhalAppComponent
-import com.daugeldauge.kinzhal.sample.graph.Versions
+import com.daugeldauge.kinzhal.sample.graph.*
 
 import kotlin.test.Test
 import kotlin.test.assertNotSame
@@ -14,14 +11,19 @@ class GraphTests {
     @Test
     fun `scoped deps aren't recreated in provision functions and vice versa`() {
 
-        val component = KinzhalAppComponent(object : AppDependencies {
-            override val application = Application()
-            override val versions: Versions = emptyMap()
-        })
+        val externalComponent = KinzhalExternalComponent()
+
+        val component = KinzhalAppComponent(
+            appDependencies = object : AppDependencies {
+                override val application = Application()
+                override val versions: Versions = emptyMap()
+            },
+            externalComponent = externalComponent
+        )
 
         assertSame(component.router, component.router)
         assertNotSame(component.createAuthPresenter(), component.createAuthPresenter())
-        assertNotSame(component.versions, component.versions)
+        assertSame(component.versions, component.versions)
 
     }
 }
