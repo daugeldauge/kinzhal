@@ -383,7 +383,7 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
 
     private fun KSAnnotation.typeListParameter(property: KProperty<*>): List<KSType> {
         @Suppress("UNCHECKED_CAST")
-        return findParameter(property)!!.value as List<KSType>
+        return (findParameter(property)?.value as? List<KSType>).orEmpty()
     }
 
     private fun KSAnnotation.findParameter(property: KProperty<*>): KSValueArgument? {
