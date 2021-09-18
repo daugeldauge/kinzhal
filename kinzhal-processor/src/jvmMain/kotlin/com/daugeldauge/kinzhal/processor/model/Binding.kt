@@ -1,0 +1,42 @@
+package com.daugeldauge.kinzhal.processor.model
+
+import com.google.devtools.ksp.symbol.KSDeclaration
+import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import com.google.devtools.ksp.symbol.KSPropertyDeclaration
+import com.google.devtools.ksp.symbol.KSType
+
+internal sealed interface Binding {
+    val key: Key
+    val declaration: KSDeclaration
+    val dependencies: List<Key>
+        get() = emptyList()
+}
+
+internal class ComponentDependencyFunctionBinding(
+    override val key: Key,
+    override val declaration: KSFunctionDeclaration,
+    val dependenciesInterface: KSType,
+) : Binding
+
+internal class ComponentDependencyPropertyBinding(
+    override val key: Key,
+    override val declaration: KSPropertyDeclaration,
+    val dependenciesInterface: KSType,
+) : Binding
+
+internal class DelegatedBinding(
+    override val key: Key,
+    override val declaration: KSFunctionDeclaration,
+    delegatedTo: Key,
+) : Binding {
+    override val dependencies = listOf(delegatedTo)
+}
+
+internal class FactoryBinding(
+    override val key: Key,
+    override val declaration: KSDeclaration,
+    override val dependencies: List<Key>,
+    val scoped: Boolean,
+    val factoryName: String,
+    val factoryPackage: String,
+) : Binding
