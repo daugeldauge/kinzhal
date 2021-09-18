@@ -23,4 +23,17 @@ class ArtistImagesStorage @Inject constructor()
 @Qualifier
 annotation class ScreenId
 
-class AuthPresenter @Inject constructor(database: Database, lastFmApi: LastFmApi, @ScreenId screenId: String)
+@Qualifier
+annotation class SectionId
+
+@Qualifier
+annotation class ArtistId
+
+class AuthPresenter @Inject constructor(
+    database: Database,
+    lastFmApi: LastFmApi,
+    @ScreenId screenId: String,
+    @SectionId sectionId: String,
+    @ArtistId artistId: String,
+    plainString: String,
+)

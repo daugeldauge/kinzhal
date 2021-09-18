@@ -51,6 +51,23 @@ internal class KinzhalSymbolProcessorTest {
     }
 
     @Test
+    fun `missing binding when only type parameters differ`() {
+        expectError("Missing binding", kotlin("source.kt", """
+            import com.daugeldauge.kinzhal.annotations.Component
+            import com.daugeldauge.kinzhal.annotations.Inject
+            
+            @Component(dependencies = AppDeps::class)
+            interface AppComponent {
+                val map: Map<List<Int?>, Map<String, Map<List<Any?>, List<String>>>>
+            }
+            
+            interface AppDeps {
+                val map: Map<List<Int?>, Map<String, Map<List<Any>, List<String>>>>
+            }
+        """.trimIndent()))
+    }
+
+    @Test
     fun `component is not an interface error`() {
         expectError("@Component can't be applied to", kotlin("source.kt", """
             import com.daugeldauge.kinzhal.annotations.Component

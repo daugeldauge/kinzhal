@@ -17,6 +17,7 @@ import com.squareup.kotlinpoet.*
 import java.lang.IllegalStateException
 
 // TODO scope validation
+// TODO fix possible conflicts in component provider names
 
 class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private val logger: KSPLogger) : SymbolProcessor {
 

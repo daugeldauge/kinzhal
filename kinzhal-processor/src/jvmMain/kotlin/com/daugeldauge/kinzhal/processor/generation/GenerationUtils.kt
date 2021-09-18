@@ -16,6 +16,7 @@ import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.Nullability
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
+import java.lang.StringBuilder
 
 
 internal inline fun CodeGenerator.newFile(
@@ -60,8 +61,38 @@ private fun Binding.componentProviderName(): String? {
     }
 }
 
-private fun DelegatedBinding.componentProviderName(): String = key.lowercaseName() + "Provider"
-private fun FactoryBinding.componentProviderName(): String = key.lowercaseName() + if (scoped) "Lazy" else "Provider"
+private fun StringBuilder.appendComponentProviderName(type: KSType) {
+
+    append(type.declaration.simpleName.asString())
+
+    if (type.nullability == Nullability.NULLABLE) {
+        append("Nullable")
+    }
+
+    type.arguments.asSequence().mapNotNull { it.type }.forEach {
+        appendComponentProviderName(it.resolveToUnderlying())
+    }
+}
+
+private fun StringBuilder.appendComponentProviderName(key: Key) {
+    appendComponentProviderName(key.type)
+
+    if (key.qualifier != null) {
+        append(key.qualifier.declaration.simpleName.asString())
+    }
+}
+
+private fun DelegatedBinding.componentProviderName(): String = buildString {
+    appendComponentProviderName(key)
+
+    append("Provider")
+}.decapitalized()
+
+private fun FactoryBinding.componentProviderName(): String = buildString {
+    appendComponentProviderName(key)
+
+    append(if (scoped) "Lazy" else "Provider")
+}.decapitalized()
 
 private fun ResolvedBinding.providerInitializer(): CodeBlock {
     return when (binding) {
@@ -83,8 +114,6 @@ internal fun Binding.providerReference(): String {
         is ComponentDependencyPropertyBinding -> "${dependenciesInterface.componentDependencyPropertyName()}::${declaration.simpleName.asString()}"
     }
 }
-
-private fun Key.lowercaseName() = type.declaration.simpleName.asString().decapitalized()
 
 internal fun KSType.componentDependencyPropertyName() = declaration.simpleName.asString().decapitalized()
 
