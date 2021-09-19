@@ -1,3 +1,5 @@
+import org.gradle.jvm.tasks.Jar
+
 plugins {
     `maven-publish`
     signing
@@ -12,6 +14,12 @@ if (!release) {
 
 publishing {
     publications.withType<MavenPublication> {
+
+        // Empty javadoc
+        artifact(tasks.findByName("javadocJar") ?: task<Jar>("javadocJar") {
+            archiveClassifier.set("javadoc")
+        })
+
         pom {
             name.set("${project.group}:${project.name}")
             description.set("Compile-time dependency injection for Kotlin Multiplatform")

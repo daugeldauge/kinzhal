@@ -19,7 +19,7 @@ import java.lang.IllegalStateException
 // TODO scope validation
 // TODO fix possible conflicts in component provider names
 
-class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private val logger: KSPLogger) : SymbolProcessor {
+internal class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private val logger: KSPLogger) : SymbolProcessor {
 
     override fun process(resolver: Resolver): List<KSAnnotated> {
 
@@ -177,6 +177,9 @@ class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private v
     }
 }
 
+/**
+ * Main entry point to Kinzhal processor
+ */
 class KinzhalSymbolProcessorProvider : SymbolProcessorProvider {
     override fun create(environment: SymbolProcessorEnvironment): SymbolProcessor {
         return KinzhalSymbolProcessor(environment.codeGenerator, environment.logger)
