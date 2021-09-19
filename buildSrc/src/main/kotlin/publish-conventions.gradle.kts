@@ -11,30 +11,28 @@ if (!release) {
 }
 
 publishing {
-    publications {
-        create<MavenPublication>("mavenCentral") {
-            pom {
-                name.set("${project.group}:${project.name}")
-                description.set("Compile-time dependency injection for Kotlin Multiplatform")
+    publications.withType<MavenPublication> {
+        pom {
+            name.set("${project.group}:${project.name}")
+            description.set("Compile-time dependency injection for Kotlin Multiplatform")
+            url.set("https://github.com/daugeldauge/kinzhal")
+            licenses {
+                license {
+                    name.set("The Apache License, Version 2.0")
+                    url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
+                }
+            }
+            developers {
+                developer {
+                    name.set("Artem Daugel-Dauge")
+                    email.set("artem@daugeldauge.com")
+                    url.set("http://daugeldauge.com")
+                }
+            }
+            scm {
+                connection.set("scm:git:git://github.com/daugeldauge/kinzhal.git")
+                developerConnection.set("scm:git:git://github.com/daugeldauge/kinzhal.git")
                 url.set("https://github.com/daugeldauge/kinzhal")
-                licenses {
-                    license {
-                        name.set("The Apache License, Version 2.0")
-                        url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
-                    }
-                }
-                developers {
-                    developer {
-                        name.set("Artem Daugel-Dauge")
-                        email.set("artem@daugeldauge.com")
-                        url.set("http://daugeldauge.com")
-                    }
-                }
-                scm {
-                    connection.set("scm:git:git://github.com/daugeldauge/kinzhal.git")
-                    developerConnection.set("scm:git:git://github.com/daugeldauge/kinzhal.git")
-                    url.set("https://github.com/daugeldauge/kinzhal")
-                }
             }
         }
     }

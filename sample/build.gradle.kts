@@ -4,11 +4,14 @@ plugins {
 }
 
 repositories {
+//    mavenLocal()
+//    maven(url = "https://s01.oss.sonatype.org/content/repositories/snapshots/")
     mavenCentral()
 }
 
 dependencies {
     ksp(project(":kinzhal-processor"))
+//    ksp("com.daugeldauge.kinzhal:kinzhal-processor:0.0.5-SNAPSHOT")
 }
 
 
@@ -20,6 +23,7 @@ kotlin {
         getByName("commonMain") {
             dependencies {
                 implementation(project(":kinzhal-annotations"))
+//                implementation("com.daugeldauge.kinzhal:kinzhal-annotations:0.0.5-SNAPSHOT")
                 kotlin.srcDir("$buildDir/generated/ksp/jvmMain/kotlin") // only needed for IDE to see generated code // TODO figure out how to avoid this
             }
         }
