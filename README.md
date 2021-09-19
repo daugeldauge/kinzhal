@@ -7,7 +7,7 @@ Kinzhal is a Kotlin Multiplatform library for compile-time dependency injection.
 
 Kinzhal is based on [Kotlin Symbol Processing](https://github.com/google/ksp) (KSP) — the API for lightweight compiler plugins. You'll need to set up KSP in your project to use Kinzhal
 
-# Setup
+## Setup
 
 Add KSP to your plugins section:
 ```kotlin
@@ -46,7 +46,7 @@ kotlin {
 ```
 
 
-# FAQ
+## FAQ
 
 **What does *kinzhal* mean?**
 
@@ -56,7 +56,7 @@ It's a [russian word](https://en.wiktionary.org/wiki/кинжал) for dagger. Y
 
 Probably. But we'll see
 
-# Examples
+## Examples
 
 ```kotlin
 @AppScope
@@ -107,7 +107,7 @@ val presenter = component.createAuthPresenter()
 ```
 See more in the [source code](https://github.com/daugeldauge/kinzhal/tree/master/sample/src/commonMain/kotlin/com/daugeldauge/kinzhal/sample/graph)
   
-# Dagger2 compatibility table
+## Dagger2 compatibility table
 
 | Feature    | Kinzhal support | Notes      |
 | ---------- | --------------- | -----------|
