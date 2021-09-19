@@ -30,9 +30,11 @@ internal fun generateFactory(
         providerName to LambdaTypeName.get(returnType = key.asTypeName())
     }
 
+    val containingFile = sourceDeclaration.containingFile!!
+
     codeGenerator.newFile(
         dependenciesAggregating = false,
-        dependencies = arrayOf(sourceDeclaration.containingFile!!),
+        dependencies = arrayOf(containingFile),
         packageName = packageName,
         fileName = factoryName,
     ) {
@@ -85,6 +87,7 @@ internal fun generateFactory(
     return FactoryBinding(
         key = injectableKey,
         declaration = sourceDeclaration,
+        containingFile = containingFile,
         scoped = annotations.mapNotNull {
             it.annotationType.resolveToUnderlying().declaration.findAnnotation<Scope>()?.annotationType?.resolveToUnderlying()
         }.toList().isNotEmpty(),

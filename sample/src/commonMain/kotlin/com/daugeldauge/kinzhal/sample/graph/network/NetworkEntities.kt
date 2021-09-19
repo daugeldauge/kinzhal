@@ -21,5 +21,3 @@ class LastFmKtorApi @Inject constructor(client: HttpClient) : LastFmApi
 class DeezerKtorApi @Inject constructor(client: HttpClient) : DeezerApi
 
 class SpotifyKtorApi @Inject constructor(client: HttpClient) : SpotifyApi
-
-

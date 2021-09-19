@@ -3,6 +3,7 @@ package com.daugeldauge.kinzhal.processor.generation
 import com.daugeldauge.kinzhal.processor.*
 import com.daugeldauge.kinzhal.processor.model.ComponentFunctionRequestedKey
 import com.daugeldauge.kinzhal.processor.model.ComponentPropertyRequestedKey
+import com.daugeldauge.kinzhal.processor.model.FactoryBinding
 import com.daugeldauge.kinzhal.processor.model.ResolvedBindingGraph
 import com.google.devtools.ksp.processing.CodeGenerator
 import com.squareup.kotlinpoet.*
@@ -16,9 +17,11 @@ internal fun ResolvedBindingGraph.generateComponent(codeGenerator: CodeGenerator
         name to typeName
     }
 
+    val dependencies = bindings.asSequence().mapNotNull { (it.binding as? FactoryBinding)?.containingFile } + component.containingFile!!
+
     codeGenerator.newFile(
-        dependenciesAggregating = true, // TODO is it true?
-        dependencies = arrayOf(component.containingFile!!), // TODO should add files with constructor injections?
+        dependenciesAggregating = false, // TODO is it false?
+        dependencies = dependencies.toList().toTypedArray(),
         packageName = component.qualifiedName!!.getQualifier(),
         fileName = generatedComponentName,
     ) {

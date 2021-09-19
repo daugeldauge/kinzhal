@@ -1,9 +1,6 @@
 package com.daugeldauge.kinzhal.processor.model
 
-import com.google.devtools.ksp.symbol.KSDeclaration
-import com.google.devtools.ksp.symbol.KSFunctionDeclaration
-import com.google.devtools.ksp.symbol.KSPropertyDeclaration
-import com.google.devtools.ksp.symbol.KSType
+import com.google.devtools.ksp.symbol.*
 
 internal sealed interface Binding {
     val key: Key
@@ -36,6 +33,7 @@ internal class FactoryBinding(
     override val key: Key,
     override val declaration: KSDeclaration,
     override val dependencies: List<Key>,
+    val containingFile: KSFile,
     val scoped: Boolean,
     val factoryName: String,
     val factoryPackage: String,
