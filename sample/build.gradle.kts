@@ -24,6 +24,9 @@ kotlin {
             dependencies {
                 implementation(project(":kinzhal-annotations"))
 //                implementation("com.daugeldauge.kinzhal:kinzhal-annotations:0.0.5-SNAPSHOT")
+            }
+
+            if (System.getProperty("idea.sync.active") != null) {
                 kotlin.srcDir("$buildDir/generated/ksp/jvmMain/kotlin") // only needed for IDE to see generated code // TODO figure out how to avoid this
             }
         }
