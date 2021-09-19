@@ -55,6 +55,57 @@ It's a [russian word](https://en.wiktionary.org/wiki/кинжал) for dagger. Y
 **Will this project become deprecated after Dagger releases [support for KSP and Multiplatform](https://github.com/google/dagger/issues/2349)?** 
 
 Probably. But we'll see
+
+# Examples
+
+```kotlin
+@AppScope
+@Component(modules = [
+    NetworkModule::class,
+], dependencies = [
+    AppDependencies::class,
+])
+interface AppComponent {
+    fun createAuthPresenter(): AuthPresenter
+}
+
+interface AppDependencies {
+    val application: Application
+}
+
+@Scope
+annotation class AppScope
+
+class Application
+
+@AppScope
+class Database @Inject constructor(application: Application)
+
+class AuthPresenter @Inject constructor(database: Database, lastFmApi: LastFmApi)
+
+class HttpClient
+
+interface LastFmApi
+
+class LastFmKtorApi @Inject constructor(client: HttpClient) : LastFmApi
+
+interface NetworkModule {
+    companion object {
+        @AppScope
+        fun provideHttpClient() = HttpClient()
+    }
+
+    fun bindLastFm(lastFmApi: LastFmKtorApi): LastFmApi
+}
+
+// somewhere in your app
+val component = KinzhalAppComponent(object : AppDependencies {
+    override val application = Application()
+})
+
+val presenter = component.createAuthPresenter()
+```
+See more in the [source code](https://github.com/daugeldauge/kinzhal/tree/master/sample/src/commonMain/kotlin/com/daugeldauge/kinzhal/sample/graph)
   
 # Dagger2 compatibility table
 
