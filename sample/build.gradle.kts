@@ -19,6 +19,7 @@ kotlin {
     sourceSets {
         jvm()
         ios()
+        macosX64()
 
         getByName("commonMain") {
             dependencies {

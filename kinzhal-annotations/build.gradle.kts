@@ -10,4 +10,9 @@ repositories {
 kotlin {
     jvm()
     ios()
+    macosArm64()
+    macosX64()
+    watchos()
+    tvos()
+    linuxX64()
 }
