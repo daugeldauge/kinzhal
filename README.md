@@ -1,4 +1,4 @@
-[![Maven Central](https://img.shields.io/maven-central/v/com.daugeldauge.kinzhal/kinzhal-processor?color=blue)](https://search.maven.org/artifact/kinzhal/kinzhal-processor)
+[![Maven Central](https://img.shields.io/maven-central/v/com.daugeldauge.kinzhal/kinzhal-processor?color=blue)](https://search.maven.org/search?q=g:com.daugeldauge.kinzhal)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0)
 
 # Kinzhal
