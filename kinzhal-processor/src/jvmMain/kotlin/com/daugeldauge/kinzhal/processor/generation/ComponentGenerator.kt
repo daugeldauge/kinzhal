@@ -27,6 +27,7 @@ internal fun ResolvedBindingGraph.generateComponent(codeGenerator: CodeGenerator
     ) {
         addType(
             TypeSpec.classBuilder(generatedComponentName)
+                .addModifiers(KModifier.INTERNAL)
                 .addSuperinterface(component.asClassName())
                 .primaryConstructor(
                     FunSpec.constructorBuilder()

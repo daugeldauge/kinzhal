@@ -49,6 +49,7 @@ internal fun generateFactory(
 
         addType(
             TypeSpec.classBuilder(factoryName)
+                .addModifiers(KModifier.INTERNAL)
                 .primaryConstructor(
                     FunSpec.constructorBuilder()
                         .addParameters(
