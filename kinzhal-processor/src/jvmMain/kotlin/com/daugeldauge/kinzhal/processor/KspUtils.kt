@@ -15,6 +15,7 @@ internal fun KSTypeReference.resolveToUnderlying(): KSType {
         candidate = declaration.type.resolve()
         declaration = candidate.declaration
     }
+    assert(!candidate.isError) { "Unable to resolve type reference: $this" }
     return candidate
 }
 
