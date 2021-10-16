@@ -49,7 +49,7 @@ internal class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, 
                     sourceDeclaration = injectable,
                     addCreateInstanceCall = { add("%T", injectableKey.asTypeName()) },
                     packageName = injectableKey.type.declaration.packageName.asString(),
-                    factoryName = injectableKey.type.declaration.simpleName.asString() + "Factory",
+                    factoryBaseName = injectableKey.type.declaration.simpleName.asString()
                 )
             }
             .toList()
@@ -90,7 +90,7 @@ internal class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, 
                                 sourceDeclaration = providerFunction,
                                 addCreateInstanceCall = { add("%T.$providerName", module.asClassName()) },
                                 packageName = module.packageName.asString(),
-                                factoryName = ClassName.bestGuess(module.qualifiedName!!.asString()).simpleNames.joinToString(separator = "") + providerName.capitalized() + "Factory",
+                                factoryBaseName = ClassName.bestGuess(module.qualifiedName!!.asString()).simpleNames.joinToString(separator = "") + "_" + providerName.capitalized()
                             )
                         }
                         .toList().also { knownModules[module] = it }

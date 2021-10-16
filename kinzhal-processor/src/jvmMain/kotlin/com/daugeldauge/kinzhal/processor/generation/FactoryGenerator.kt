@@ -19,7 +19,7 @@ internal fun generateFactory(
     sourceDeclaration: KSFunctionDeclaration,
     addCreateInstanceCall: CodeBlock.Builder.() -> Unit,
     packageName: String,
-    factoryName: String,
+    factoryBaseName: String,
 ): FactoryBinding {
 
     val dependencies = sourceDeclaration.parameters.map {
@@ -32,6 +32,7 @@ internal fun generateFactory(
 
     val containingFile = sourceDeclaration.containingFile!!
 
+    val factoryName = factoryBaseName + "_Factory"
     codeGenerator.newFile(
         dependenciesAggregating = false,
         dependencies = arrayOf(containingFile),
