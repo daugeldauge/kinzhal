@@ -10,7 +10,7 @@ import org.junit.rules.TemporaryFolder
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 
-internal class KinzhalSymbolProcessorTest {
+internal class ProcessorErrorsTest {
 
     @Rule
     @JvmField
@@ -160,6 +160,32 @@ internal class KinzhalSymbolProcessorTest {
             }
                 
             class Repo @Inject constructor(key: String)
+        """.trimIndent()))
+    }
+
+    @Test
+    fun `multiple qualifiers error`() {
+        expectError("Multiple qualifiers not permitted", kotlin("source.kt", """
+            import com.daugeldauge.kinzhal.annotations.Component
+            import com.daugeldauge.kinzhal.annotations.Inject
+            import com.daugeldauge.kinzhal.annotations.Qualifier            
+            
+            @Qualifier
+            annotation class One
+            
+            @Qualifier
+            annotation class Another
+            
+            @Component(modules = [AppModule::class])
+            interface AppComponent {
+                @One @Another
+                val string: String
+            }
+            
+            object AppModule {
+                @One @Another
+                fun string() = "    "
+            }
         """.trimIndent()))
     }
 
