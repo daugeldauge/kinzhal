@@ -14,7 +14,7 @@ import com.google.devtools.ksp.isConstructor
 import com.google.devtools.ksp.processing.*
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.*
-import java.lang.IllegalStateException
+import java.lang.RuntimeException
 
 // TODO scope validation
 // TODO fix possible conflicts in component provider names
@@ -22,6 +22,16 @@ import java.lang.IllegalStateException
 internal class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, private val logger: KSPLogger) : SymbolProcessor {
 
     override fun process(resolver: Resolver): List<KSAnnotated> {
+        try {
+            processSafe(resolver)
+        } catch (e: NonRecoverableProcessorException) {
+            logger.error(e.message, e.node)
+        }
+
+        return emptyList()
+    }
+
+    private fun processSafe(resolver: Resolver) {
 
         val constructorInjectedBindings = resolver.getSymbolsWithAnnotation(Inject::class.requireQualifiedName())
             .mapNotNull { injectable ->
@@ -39,7 +49,7 @@ internal class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, 
                     sourceDeclaration = injectable,
                     addCreateInstanceCall = { add("%T", injectableKey.asTypeName()) },
                     packageName = injectableKey.type.declaration.packageName.asString(),
-                    factoryName = injectableKey.type.declaration.simpleName.asString() + "Factory",
+                    factoryBaseName = injectableKey.type.declaration.simpleName.asString()
                 )
             }
             .toList()
@@ -80,7 +90,7 @@ internal class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, 
                                 sourceDeclaration = providerFunction,
                                 addCreateInstanceCall = { add("%T.$providerName", module.asClassName()) },
                                 packageName = module.packageName.asString(),
-                                factoryName = ClassName.bestGuess(module.qualifiedName!!.asString()).simpleNames.joinToString(separator = "") + providerName.capitalized() + "Factory",
+                                factoryBaseName = ClassName.bestGuess(module.qualifiedName!!.asString()).simpleNames.joinToString(separator = "") + "_" + providerName.capitalized()
                             )
                         }
                         .toList().also { knownModules[module] = it }
@@ -145,8 +155,6 @@ internal class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, 
                 ).resolve(logger).generateComponent(codeGenerator)
 
             }
-
-        return emptyList()
     }
 
     private fun KSClassDeclaration.provisionFunctions(): Sequence<KSFunctionDeclaration> {
@@ -186,6 +194,11 @@ class KinzhalSymbolProcessorProvider : SymbolProcessorProvider {
     }
 }
 
+internal class NonRecoverableProcessorException(
+    override val message: String,
+    val node: KSNode,
+    cause: Throwable? = null,
+) : RuntimeException(message, cause)
 
 internal fun KSPropertyDeclaration.typeKey() = type.toKey(annotations)
 
@@ -201,9 +214,7 @@ internal fun KSTypeReference.toKey(annotations: Sequence<KSAnnotation>): Key {
     }.toList()
 
     if (qualifiers.size > 1) {
-        throw IllegalStateException("Multiple qualifiers not permitted")
-        // TODO pass logger
-        // logger.error("Multiple qualifiers not permitted", this)
+        throw NonRecoverableProcessorException("Multiple qualifiers not permitted", this)
     }
 
     return Key(type = this.resolveToUnderlying(), qualifier = qualifiers.firstOrNull())
