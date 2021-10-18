@@ -15,7 +15,9 @@ internal fun KSTypeReference.resolveToUnderlying(): KSType {
         candidate = declaration.type.resolve()
         declaration = candidate.declaration
     }
-    assert(!candidate.isError) { "Unable to resolve type reference: $this" }
+    if (candidate.isError) {
+        throw NonRecoverableProcessorException("Unable to resolve type reference: $this", node = this)
+    }
     return candidate
 }
 
