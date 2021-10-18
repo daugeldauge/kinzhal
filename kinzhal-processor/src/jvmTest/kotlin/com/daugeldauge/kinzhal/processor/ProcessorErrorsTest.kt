@@ -189,6 +189,23 @@ internal class ProcessorErrorsTest {
         """.trimIndent()))
     }
 
+    @Test
+    fun `unresolved type error`() {
+        expectError("Unable to resolve type reference: UnknownType", kotlin("source.kt", """
+            import com.daugeldauge.kinzhal.annotations.Component
+            import com.daugeldauge.kinzhal.annotations.Inject           
+            
+            @Component
+            interface AppComponent {
+                fun app(): App
+            }
+            
+            class App @Inject constructor(
+                unknownInstance: UnknownType
+            )  
+        """.trimIndent()))
+    }
+
 
     private fun expectError(message: String, vararg sourceFiles: SourceFile) {
         val result = compile(*sourceFiles)
