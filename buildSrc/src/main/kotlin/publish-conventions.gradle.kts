@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "com.daugeldauge.kinzhal"
-version = "0.0.2"
+version = "0.0.3"
 
 if (!release) {
     version = "$version-SNAPSHOT"
