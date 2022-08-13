@@ -10,7 +10,7 @@ dependencyResolutionManagement {
     @Suppress("UnstableApiUsage")
     versionCatalogs {
         create("libs") {
-            val kotlinVersion = "1.6.21"
+            val kotlinVersion = "1.7.20-Beta"
             version("kotlin", kotlinVersion)
 
             val kspVersion = "$kotlinVersion-1.0.6"
