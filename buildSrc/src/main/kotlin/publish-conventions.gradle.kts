@@ -5,9 +5,6 @@ plugins {
     signing
 }
 
-group = "com.daugeldauge.kinzhal"
-version = "0.0.4"
-
 if (!release) {
     version = "$version-SNAPSHOT"
 }
