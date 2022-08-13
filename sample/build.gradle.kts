@@ -10,7 +10,7 @@ repositories {
 }
 
 dependencies {
-    ksp(project(":kinzhal-processor"))
+    ksp(projects.kinzhalProcessor)
 //    ksp("com.daugeldauge.kinzhal:kinzhal-processor:0.0.5-SNAPSHOT")
 }
 
@@ -23,7 +23,7 @@ kotlin {
 
         getByName("commonMain") {
             dependencies {
-                implementation(project(":kinzhal-annotations"))
+                implementation(projects.kinzhalAnnotations)
 //                implementation("com.daugeldauge.kinzhal:kinzhal-annotations:0.0.5-SNAPSHOT")
             }
 
