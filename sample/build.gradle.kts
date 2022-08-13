@@ -28,7 +28,7 @@ kotlin {
             }
 
             if (System.getProperty("idea.sync.active") != null) {
-                kotlin.srcDir("$buildDir/generated/ksp/jvmMain/kotlin") // only needed for IDE to see generated code // TODO figure out how to avoid this
+                kotlin.srcDir("$buildDir/generated/ksp/jvm/jvmMain/kotlin") // only needed for IDE to see generated code // TODO figure out how to avoid this
             }
         }
 
