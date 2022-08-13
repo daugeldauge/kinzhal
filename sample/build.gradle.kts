@@ -4,16 +4,15 @@ plugins {
 }
 
 repositories {
-//    mavenLocal()
-//    maven(url = "https://s01.oss.sonatype.org/content/repositories/snapshots/")
+    if (hasProperty("useSnapshotForSample")) {
+        maven(url = "https://s01.oss.sonatype.org/content/repositories/snapshots/")
+    }
     mavenCentral()
 }
 
 dependencies {
-    ksp(projects.kinzhalProcessor)
-//    ksp("com.daugeldauge.kinzhal:kinzhal-processor:0.0.5-SNAPSHOT")
+    ksp(kinzhalDependency(projects.kinzhalProcessor))
 }
-
 
 kotlin {
     sourceSets {
@@ -23,8 +22,7 @@ kotlin {
 
         getByName("commonMain") {
             dependencies {
-                implementation(projects.kinzhalAnnotations)
-//                implementation("com.daugeldauge.kinzhal:kinzhal-annotations:0.0.5-SNAPSHOT")
+                implementation(kinzhalDependency(projects.kinzhalAnnotations))
             }
 
             if (System.getProperty("idea.sync.active") != null) {
@@ -39,5 +37,12 @@ kotlin {
         }
 
     }
+}
 
+fun kinzhalDependency(project: ProjectDependency): Any {
+    return if (!hasProperty("useSnapshotForSample")) {
+        project
+    } else {
+        "${project.group}:${project.name}:$version-SNAPSHOT"
+    }
 }
