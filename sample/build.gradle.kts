@@ -47,3 +47,7 @@ fun kinzhalDependency(project: ProjectDependency): Any {
         "${project.group}:${project.name}:$version-SNAPSHOT"
     }
 }
+
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
+    kotlinOptions.allWarningsAsErrors = true
+}
