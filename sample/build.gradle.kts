@@ -1,5 +1,6 @@
+@Suppress("DSL_SCOPE_VIOLATION") // https://youtrack.jetbrains.com/issue/KTIJ-19369
 plugins {
-    id("com.google.devtools.ksp") version "1.6.21-1.0.6"
+    alias(libs.plugins.ksp)
     kotlin("multiplatform")
 }
 

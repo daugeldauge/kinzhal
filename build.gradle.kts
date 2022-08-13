@@ -1,5 +1,6 @@
+@Suppress("DSL_SCOPE_VIOLATION") // https://youtrack.jetbrains.com/issue/KTIJ-19369
 plugins {
-    kotlin("jvm") version "1.6.21" apply false
+    kotlin("jvm") version libs.versions.kotlin.get() apply false
 }
 
 repositories {
