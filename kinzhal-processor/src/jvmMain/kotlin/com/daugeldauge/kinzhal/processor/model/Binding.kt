@@ -9,6 +9,13 @@ internal sealed interface Binding {
         get() = emptyList()
 }
 
+internal class ComponentBinding(
+    component: KSClassDeclaration,
+) : Binding {
+    override val key = Key(component.asStarProjectedType())
+    override val declaration: KSDeclaration = component
+}
+
 internal class ComponentDependencyFunctionBinding(
     override val key: Key,
     override val declaration: KSFunctionDeclaration,

@@ -17,6 +17,7 @@ typealias Versions = Map<VersionCode, String>
 @Component(modules = [
     NetworkModule::class,
     AppModule::class,
+    SuperComponentBindingModule::class,
 ], dependencies = [
     AppDependencies::class,
     ExternalComponent::class,
@@ -28,9 +29,15 @@ interface AppComponent : SuperComponent {
     val router: Router
 
     val versions: Versions
+
+    val superComponent: SuperComponent
 }
 
 interface AppDependencies {
     val application: Application
     val versions: Map<Int, String>
+}
+
+interface SuperComponentBindingModule {
+    fun bindAppComponentAsSuperComponent(component: AppComponent): SuperComponent
 }
