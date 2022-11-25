@@ -1,6 +1,7 @@
 package com.daugeldauge.kinzhal.processor.generation
 
 import com.daugeldauge.kinzhal.processor.model.Binding
+import com.daugeldauge.kinzhal.processor.model.ComponentBinding
 import com.daugeldauge.kinzhal.processor.model.ComponentDependencyFunctionBinding
 import com.daugeldauge.kinzhal.processor.model.ComponentDependencyPropertyBinding
 import com.daugeldauge.kinzhal.processor.model.DelegatedBinding
@@ -58,6 +59,7 @@ private fun Binding.componentProviderName(): String? {
         is DelegatedBinding -> componentProviderName()
         is ComponentDependencyFunctionBinding -> null
         is ComponentDependencyPropertyBinding -> null
+        is ComponentBinding -> null
     }
 }
 
@@ -103,11 +105,13 @@ private fun ResolvedBinding.providerInitializer(): CodeBlock {
         is DelegatedBinding -> CodeBlock.of(dependencies.first().providerReference())
         is ComponentDependencyFunctionBinding -> error("impossible")
         is ComponentDependencyPropertyBinding -> error("impossible")
+        is ComponentBinding -> error("impossible")
     }
 }
 
 internal fun Binding.providerReference(): String {
     return when (this) {
+        is ComponentBinding -> "::${GenerationConstants.SelfFunName}"
         is FactoryBinding -> if (scoped) "${componentProviderName()}::value" else componentProviderName()
         is DelegatedBinding -> componentProviderName()
         is ComponentDependencyFunctionBinding -> "${dependenciesInterface.componentDependencyPropertyName()}::${declaration.simpleName.asString()}"
@@ -122,6 +126,10 @@ internal fun KSClassDeclaration.asClassName(): ClassName {
     val simpleNames = qualifiedName!!.asString().removePrefix("$packageNameString.").split(".")
 
     return ClassName(packageNameString, simpleNames)
+}
+
+internal fun KSClassDeclaration.asTypeName(): TypeName {
+    return asStarProjectedType().asTypeName()
 }
 
 internal fun Key.asTypeName(): TypeName {

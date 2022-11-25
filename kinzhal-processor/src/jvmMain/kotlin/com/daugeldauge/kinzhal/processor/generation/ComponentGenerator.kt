@@ -6,6 +6,7 @@ import com.daugeldauge.kinzhal.processor.model.ComponentPropertyRequestedKey
 import com.daugeldauge.kinzhal.processor.model.FactoryBinding
 import com.daugeldauge.kinzhal.processor.model.ResolvedBindingGraph
 import com.google.devtools.ksp.processing.CodeGenerator
+import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.squareup.kotlinpoet.*
 
 internal fun ResolvedBindingGraph.generateComponent(codeGenerator: CodeGenerator) {
@@ -34,6 +35,7 @@ internal fun ResolvedBindingGraph.generateComponent(codeGenerator: CodeGenerator
                         .addParameters(constructorProperties.map { (name, type) -> ParameterSpec(name, type) })
                         .build()
                 )
+                .addFunction(component.selfFunSpec())
                 .addProperties(
                     constructorProperties.map { (name, type) ->
                         PropertySpec.builder(name, type, KModifier.PRIVATE)
@@ -77,3 +79,9 @@ internal fun ResolvedBindingGraph.generateComponent(codeGenerator: CodeGenerator
         )
     }
 }
+
+private fun KSClassDeclaration.selfFunSpec() = FunSpec.builder(GenerationConstants.SelfFunName)
+    .addModifiers(KModifier.PRIVATE)
+    .addCode("return this")
+    .returns(asTypeName())
+    .build()

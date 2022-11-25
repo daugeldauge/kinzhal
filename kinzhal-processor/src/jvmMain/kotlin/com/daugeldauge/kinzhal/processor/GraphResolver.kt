@@ -1,6 +1,7 @@
 package com.daugeldauge.kinzhal.processor
 
 import com.daugeldauge.kinzhal.processor.model.Binding
+import com.daugeldauge.kinzhal.processor.model.ComponentBinding
 import com.daugeldauge.kinzhal.processor.model.Key
 import com.daugeldauge.kinzhal.processor.model.ResolvedBinding
 import com.daugeldauge.kinzhal.processor.model.ResolvedBindingGraph
@@ -19,6 +20,8 @@ internal fun UnresolvedBindingGraph.resolve(logger: KSPLogger): ResolvedBindingG
             logger.error("Duplicated binding: ${binding.key} already provided in ${previous.declaration.location}", binding.declaration)
         }
     }
+
+    add(ComponentBinding(component))
 
     factoryBindings.forEach(::add)
 
