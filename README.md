@@ -12,7 +12,7 @@ Kinzhal is based on [Kotlin Symbol Processing](https://github.com/google/ksp) (K
 Add KSP to your plugins section:
 ```kotlin
 plugins {
-    id("com.google.devtools.ksp") version "1.5.30-1.0.0"
+    id("com.google.devtools.ksp") version "$kspVersion"
     kotlin("multiplatform")
     // ...
 }
