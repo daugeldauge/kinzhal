@@ -64,6 +64,10 @@ internal class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, 
                     return@forEach
                 }
 
+                if (component.typeParameters.isNotEmpty()) {
+                    logger.error("@Component can't be generic interface", component)
+                }
+
                 val componentAnnotation = component.findAnnotation<Component>()!!
 
                 val modules = componentAnnotation.typeListParameter(Component::modules).map { it.declaration as KSClassDeclaration }

@@ -35,7 +35,7 @@ internal fun ResolvedBindingGraph.generateComponent(codeGenerator: CodeGenerator
                         .addParameters(constructorProperties.map { (name, type) -> ParameterSpec(name, type) })
                         .build()
                 )
-                .addFunction(component.selfFunSpec())
+                .addFunction(selfFunSpec())
                 .addProperties(
                     constructorProperties.map { (name, type) ->
                         PropertySpec.builder(name, type, KModifier.PRIVATE)
@@ -80,8 +80,7 @@ internal fun ResolvedBindingGraph.generateComponent(codeGenerator: CodeGenerator
     }
 }
 
-private fun KSClassDeclaration.selfFunSpec() = FunSpec.builder(GenerationConstants.SelfFunName)
+private fun selfFunSpec() = FunSpec.builder(GenerationConstants.SelfFunName)
     .addModifiers(KModifier.PRIVATE)
     .addCode("return this")
-    .returns(asTypeName())
     .build()
