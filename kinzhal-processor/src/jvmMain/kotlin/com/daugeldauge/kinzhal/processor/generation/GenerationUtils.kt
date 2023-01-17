@@ -127,11 +127,6 @@ internal fun KSClassDeclaration.asClassName(): ClassName {
 
     return ClassName(packageNameString, simpleNames)
 }
-
-internal fun KSClassDeclaration.asTypeName(): TypeName {
-    return asStarProjectedType().asTypeName()
-}
-
 internal fun Key.asTypeName(): TypeName {
     return type.asTypeName()
 }

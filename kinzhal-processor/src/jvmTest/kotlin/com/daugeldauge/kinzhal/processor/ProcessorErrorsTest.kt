@@ -83,6 +83,21 @@ internal class ProcessorErrorsTest {
     }
 
     @Test
+    fun `component is not an generic`() {
+        expectError("@Component can't be generic interface", kotlin("source.kt", """
+            import com.daugeldauge.kinzhal.annotations.Component
+            import com.daugeldauge.kinzhal.annotations.Inject
+
+            @Component
+            interface AppComponent<T> {
+                 val repo: Repo
+            }
+
+            class Repo @Inject constructor()
+        """.trimIndent()))
+    }
+
+    @Test
     fun `binding function with multiple params error`() {
         expectError("Binding function must have exactly one parameter", kotlin("source.kt", """
             import com.daugeldauge.kinzhal.annotations.Component
