@@ -36,3 +36,15 @@ annotation class Scope
 @Retention(AnnotationRetention.SOURCE)
 @Target(AnnotationTarget.ANNOTATION_CLASS)
 annotation class Qualifier
+
+@Retention(AnnotationRetention.SOURCE)
+@Target(AnnotationTarget.CONSTRUCTOR)
+annotation class AssistedInject
+
+@Retention(AnnotationRetention.SOURCE)
+@Target(AnnotationTarget.VALUE_PARAMETER)
+annotation class Assisted
+
+@Retention(AnnotationRetention.SOURCE)
+@Target(AnnotationTarget.CLASS)
+annotation class AssistedFactory

@@ -17,7 +17,7 @@ internal fun UnresolvedBindingGraph.resolve(logger: KSPLogger): ResolvedBindingG
         val previous = allBindings.put(binding.key, binding)
 
         if (previous != null) {
-            logger.error("Duplicated binding: ${binding.key} already provided in ${previous.declaration.location}", binding.declaration)
+            logger.error("Duplicated binding: ${binding.key} already provided in ${previous.declaration?.location}", binding.declaration)
         }
     }
 
