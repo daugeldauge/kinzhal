@@ -9,6 +9,11 @@ interface NetworkModule {
         fun provideHttpClient(@Suppress("UNUSED_PARAMETER") listOfUnknown: List<*>) = HttpClient()
 
         fun provideListOfUnknown(): List<*> = listOf(1, 2, 3)
+
+        @HttpClientScope
+        fun provideDiscogsImpl(assistedFactory: DiscogsKtorApiFactory): DiscogsKtorApi {
+            return assistedFactory.create(apiKey = "123", userAgent = "Kinzhal")
+        }
     }
 
     fun bindLastFm(lastFmApi: LastFmKtorApi): LastFmApi
@@ -17,4 +22,5 @@ interface NetworkModule {
 
     fun bindDeezer(deezerApi: DeezerKtorApi): DeezerApi
 
+    fun bindDeezer(discogsKtorApi: DiscogsKtorApi): DiscogsApi
 }

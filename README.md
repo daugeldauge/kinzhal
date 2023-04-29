@@ -131,6 +131,4 @@ See more in the [source code](https://github.com/daugeldauge/kinzhal/tree/master
 | Lazy/provider injections | 🚫 | [#2](https://github.com/daugeldauge/kinzhal/issues/2) |
 | `@BindsOptionalOf` | 🚫 |
 | Multibindings | 🚫 | |
-| Assisted injection | 🚫 | |
-
-
+| Assisted injection | ✅ | |

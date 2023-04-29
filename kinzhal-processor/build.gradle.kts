@@ -15,6 +15,7 @@ kotlin {
             implementation(projects.kinzhalAnnotations)
             implementation(libs.ksp.symbolProcessingApi)
             implementation(libs.kotlinpoet)
+            implementation(libs.kotlinpoet.ksp)
         }
 
         jvmTest.dependencies {

@@ -4,7 +4,7 @@ import com.google.devtools.ksp.symbol.*
 
 internal sealed interface Binding {
     val key: Key
-    val declaration: KSDeclaration
+    val declaration: KSDeclaration?
     val dependencies: List<Key>
         get() = emptyList()
 }
@@ -38,7 +38,7 @@ internal class DelegatedBinding(
 
 internal class FactoryBinding(
     override val key: Key,
-    override val declaration: KSDeclaration,
+    override val declaration: KSDeclaration?,
     override val dependencies: List<Key>,
     val containingFile: KSFile,
     val scoped: Boolean,

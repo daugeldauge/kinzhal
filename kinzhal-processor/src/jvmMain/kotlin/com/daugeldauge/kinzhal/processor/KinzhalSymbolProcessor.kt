@@ -1,5 +1,7 @@
 package com.daugeldauge.kinzhal.processor
 
+import com.daugeldauge.kinzhal.annotations.AssistedFactory
+import com.daugeldauge.kinzhal.annotations.AssistedInject
 import com.daugeldauge.kinzhal.annotations.Component
 import com.daugeldauge.kinzhal.annotations.Inject
 import com.daugeldauge.kinzhal.annotations.Qualifier
@@ -50,6 +52,53 @@ internal class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, 
                     addCreateInstanceCall = { add("%T", injectableKey.asTypeName()) },
                     packageName = injectableKey.type.declaration.packageName.asString(),
                     factoryBaseName = injectableKey.type.declaration.simpleName.asString()
+                )
+            }
+            .toList()
+
+        val assistedFactoryTypes = resolver.getSymbolsWithAnnotation(AssistedFactory::class.requireQualifiedName())
+            .mapNotNull { assistedFactoryDeclaration ->
+                if (assistedFactoryDeclaration !is KSClassDeclaration || !assistedFactoryDeclaration.isAbstract()) {
+                    logger.error("@AssistedFactory can be applied only to abstract types", assistedFactoryDeclaration)
+                    return@mapNotNull null
+                }
+
+                val abstractFunctions = assistedFactoryDeclaration.getAllFunctions()
+                    .filter(KSFunctionDeclaration::isAbstract)
+                    .toList()
+
+                AssistedFactoryType(
+                    type = assistedFactoryDeclaration.asType(emptyList()),
+                    factoryMethod = abstractFunctions.getOrNull(0) ?: run {
+                        logger.error("@AssistedFactory type must contain only single abstract method", assistedFactoryDeclaration)
+                        return@mapNotNull null
+                    }
+                )
+            }.associateBy { it.factoryMethod.returnType?.resolve()?.declaration?.qualifiedName?.asString() }
+
+        val constructorAssistedInjectedBindings = resolver.getSymbolsWithAnnotation(AssistedInject::class.requireQualifiedName())
+            .mapNotNull { injectable ->
+                if (injectable !is KSFunctionDeclaration || !injectable.isConstructor()) {
+                    logger.error("@AssistedInject can't be applied to $injectable: only constructor injection supported", injectable)
+                    return@mapNotNull null
+                }
+
+                val injectableKey = injectable.returnTypeKey()
+                val assistedFactoryType = assistedFactoryTypes[injectableKey.type.declaration.qualifiedName?.asString()]
+
+                if (assistedFactoryType == null) {
+                    logger.error("@AssistedFactory annotated type doesn't exist for type ${injectableKey.type}", injectable)
+                    return@mapNotNull null
+                }
+
+                generateAssistedFactory(
+                    codeGenerator = codeGenerator,
+                    injectableKey = injectableKey,
+                    sourceDeclaration = injectable,
+                    addCreateInstanceCall = { add("%T", injectableKey.asTypeName()) },
+                    packageName = assistedFactoryType.type.declaration.packageName.asString(),
+                    factoryBaseName = assistedFactoryType.type.declaration.simpleName.asString(),
+                    assistedFactoryType = assistedFactoryType
                 )
             }
             .toList()
@@ -152,7 +201,7 @@ internal class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, 
 
                 UnresolvedBindingGraph(
                     component = component,
-                    factoryBindings = (providerBindings + constructorInjectedBindings),
+                    factoryBindings = (providerBindings + constructorInjectedBindings + constructorAssistedInjectedBindings),
                     componentDependencies = componentDependencies,
                     delegated = delegated,
                     requested = (requestedFunctionKeys + requestedPropertyKeys).toList(),

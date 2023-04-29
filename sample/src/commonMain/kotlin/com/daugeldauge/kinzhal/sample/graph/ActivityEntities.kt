@@ -5,6 +5,7 @@ package com.daugeldauge.kinzhal.sample.graph
 import com.daugeldauge.kinzhal.annotations.Inject
 import com.daugeldauge.kinzhal.annotations.Scope
 import com.daugeldauge.kinzhal.sample.graph.network.DeezerApi
+import com.daugeldauge.kinzhal.sample.graph.network.DiscogsApi
 import com.daugeldauge.kinzhal.sample.graph.network.SpotifyApi
 
 @Scope
@@ -18,5 +19,6 @@ class ArtistsPresenter @Inject constructor(
     private val artistImagesStorage: ArtistImagesStorage,
     private val deezer: DeezerApi,
     private val spotify: SpotifyApi,
+    private val discogs: DiscogsApi,
     private val router: Router,
 )
