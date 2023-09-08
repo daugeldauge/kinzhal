@@ -10,10 +10,10 @@ dependencyResolutionManagement {
     @Suppress("UnstableApiUsage")
     versionCatalogs {
         create("libs") {
-            val kotlinVersion = "1.8.0"
+            val kotlinVersion = "1.9.20-Beta"
             version("kotlin", kotlinVersion)
 
-            val kspVersion = "$kotlinVersion-1.0.9"
+            val kspVersion = "1.9.10-1.0.13"
 
             library("kotlinpoet", "com.squareup:kotlinpoet:1.9.0")
             library("compileTestingKsp", "com.github.tschuchortdev:kotlin-compile-testing-ksp:1.4.4")
@@ -26,6 +26,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "kinzhal"
 
-include(":kinzhal-processor")
+//include(":kinzhal-processor")
 include(":kinzhal-annotations")
-include(":sample")
+//include(":sample")

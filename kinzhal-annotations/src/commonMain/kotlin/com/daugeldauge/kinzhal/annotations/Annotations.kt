@@ -2,6 +2,7 @@
 
 package com.daugeldauge.kinzhal.annotations
 
+import kotlinx.coroutines.Dispatchers
 import kotlin.reflect.KClass
 
 /**
@@ -36,3 +37,7 @@ annotation class Scope
 @Retention(AnnotationRetention.SOURCE)
 @Target(AnnotationTarget.ANNOTATION_CLASS)
 annotation class Qualifier
+
+fun test() {
+    Dispatchers.Default
+}

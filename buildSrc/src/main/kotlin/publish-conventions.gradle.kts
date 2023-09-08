@@ -2,7 +2,7 @@ import org.gradle.jvm.tasks.Jar
 
 plugins {
     `maven-publish`
-    signing
+//    signing
 }
 
 if (!release) {
@@ -40,11 +40,17 @@ publishing {
                 url.set("https://github.com/daugeldauge/kinzhal")
             }
         }
+
+        versionMapping {
+            allVariants {
+                fromResolutionResult()
+            }
+        }
     }
 
-    signing {
-        sign(publications)
-    }
+//    signing {
+//        sign(publications)
+//    }
 
     repositories {
         maven {
