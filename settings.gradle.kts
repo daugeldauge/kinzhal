@@ -7,13 +7,12 @@ pluginManagement {
 }
 
 dependencyResolutionManagement {
-    @Suppress("UnstableApiUsage")
     versionCatalogs {
         create("libs") {
-            val kotlinVersion = "1.8.0"
+            val kotlinVersion = "1.9.21"
             version("kotlin", kotlinVersion)
 
-            val kspVersion = "$kotlinVersion-1.0.9"
+            val kspVersion = "$kotlinVersion-1.0.15"
 
             library("kotlinpoet", "com.squareup:kotlinpoet:1.9.0")
             library("compileTestingKsp", "com.github.tschuchortdev:kotlin-compile-testing-ksp:1.4.4")

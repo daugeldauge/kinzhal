@@ -8,22 +8,18 @@ repositories {
 }
 
 kotlin {
-    sourceSets {
-        jvm()
+    jvm()
 
-        getByName("jvmMain") {
-            dependencies {
-                implementation(projects.kinzhalAnnotations)
-                implementation(libs.ksp.symbolProcessingApi)
-                implementation(libs.kotlinpoet)
-            }
+    sourceSets {
+        jvmMain.dependencies {
+            implementation(projects.kinzhalAnnotations)
+            implementation(libs.ksp.symbolProcessingApi)
+            implementation(libs.kotlinpoet)
         }
 
-        getByName("jvmTest") {
-            dependencies {
-                implementation(kotlin("test"))
-                implementation(libs.compileTestingKsp)
-            }
+        jvmTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.compileTestingKsp)
         }
     }
 }

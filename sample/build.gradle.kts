@@ -1,4 +1,5 @@
-@Suppress("DSL_SCOPE_VIOLATION") // https://youtrack.jetbrains.com/issue/KTIJ-19369
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompileCommon
+
 plugins {
     alias(libs.plugins.ksp)
     kotlin("multiplatform")
@@ -11,27 +12,23 @@ repositories {
     mavenCentral()
 }
 
-dependencies {
-    ksp(kinzhalDependency(projects.kinzhalProcessor))
-}
-
 kotlin {
     sourceSets {
         jvm()
-        ios()
+        iosX64()
+        iosArm64()
+        iosSimulatorArm64()
         macosX64()
 
-        getByName("commonMain") {
+        commonMain {
             dependencies {
                 implementation(kinzhalDependency(projects.kinzhalAnnotations))
             }
 
-            if (System.getProperty("idea.sync.active") != null) {
-                kotlin.srcDir("$buildDir/generated/ksp/jvm/jvmMain/kotlin") // only needed for IDE to see generated code // TODO figure out how to avoid this
-            }
+            kotlin.srcDir(layout.buildDirectory.dir("generated/ksp/metadata/commonMain/kotlin")) // only needed for IDE to see generated code // TODO figure out how to avoid this
         }
 
-        getByName("commonTest") {
+        commonTest {
             dependencies {
                 implementation(kotlin("test"))
             }
@@ -40,14 +37,23 @@ kotlin {
     }
 }
 
+dependencies  {
+    kspCommonMainMetadata(kinzhalDependency(projects.kinzhalProcessor))
+}
+
+tasks.withType<org.jetbrains.kotlin.gradle.dsl.KotlinCompile<*>>().configureEach {
+    if (this !is KotlinCompileCommon) {
+        dependsOn("kspCommonMainKotlinMetadata")
+    }
+
+    kotlinOptions.allWarningsAsErrors = true
+}
+
+
 fun kinzhalDependency(project: ProjectDependency): Any {
     return if (!hasProperty("useSnapshotForSample")) {
         project
     } else {
         "${project.group}:${project.name}:$version-SNAPSHOT"
     }
-}
-
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-    kotlinOptions.allWarningsAsErrors = true
 }
