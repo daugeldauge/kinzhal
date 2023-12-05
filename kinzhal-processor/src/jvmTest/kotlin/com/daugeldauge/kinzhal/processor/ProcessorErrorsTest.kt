@@ -255,15 +255,35 @@ internal class ProcessorErrorsTest {
     }
 
     @Test
-    fun `no factory for assisted inject type`() {
+    fun `no factory for assisted type`() {
         expectError("@AssistedFactory annotated type doesn't exist for type TypeWithoutFactory", kotlin("source.kt", """
-            import com.daugeldauge.kinzhal.annotations.AssistedInject
             import com.daugeldauge.kinzhal.annotations.Assisted
+            import com.daugeldauge.kinzhal.annotations.AssistedInject
             
             class TypeWithoutFactory @AssistedInject constructor(
                 @Assisted param1: Int,
                 param2: String
             )
+        """.trimIndent()))
+    }
+
+    @Test
+    fun `failed to match assisted factory with constructor`() {
+        expectError("Factory method in @AssistedFactory must have assisted parameters by same names, types and in the same order as @AssistedInject constructor", kotlin("source.kt", """
+            import com.daugeldauge.kinzhal.annotations.Assisted
+            import com.daugeldauge.kinzhal.annotations.AssistedFactory
+            import com.daugeldauge.kinzhal.annotations.AssistedInject
+            
+            class AssistedType @AssistedInject constructor(
+                @Assisted param1: Int,
+                @Assisted param2: Int,
+                param3: String
+            )
+            
+            @AssistedFactory
+            interface AssistedFactoryImpl {
+                fun build(param2: Int, param1: Int): AssistedType
+            }
         """.trimIndent()))
     }
 

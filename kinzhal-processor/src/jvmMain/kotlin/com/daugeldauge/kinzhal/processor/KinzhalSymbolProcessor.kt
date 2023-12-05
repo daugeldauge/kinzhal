@@ -1,22 +1,13 @@
 package com.daugeldauge.kinzhal.processor
 
-import com.daugeldauge.kinzhal.annotations.AssistedFactory
-import com.daugeldauge.kinzhal.annotations.AssistedInject
-import com.daugeldauge.kinzhal.annotations.Component
-import com.daugeldauge.kinzhal.annotations.Inject
-import com.daugeldauge.kinzhal.annotations.Qualifier
+import com.daugeldauge.kinzhal.annotations.*
 import com.daugeldauge.kinzhal.processor.generation.*
-import com.daugeldauge.kinzhal.processor.generation.asTypeName
-import com.daugeldauge.kinzhal.processor.generation.capitalized
-import com.daugeldauge.kinzhal.processor.generation.generateComponent
-import com.daugeldauge.kinzhal.processor.generation.generateFactory
 import com.daugeldauge.kinzhal.processor.model.*
 import com.google.devtools.ksp.isAbstract
 import com.google.devtools.ksp.isConstructor
 import com.google.devtools.ksp.processing.*
 import com.google.devtools.ksp.symbol.*
-import com.squareup.kotlinpoet.*
-import java.lang.RuntimeException
+import com.squareup.kotlinpoet.ClassName
 
 // TODO scope validation
 // TODO fix possible conflicts in component provider names
@@ -100,7 +91,11 @@ internal class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, 
                     addCreateInstanceCall = { add("%T", injectableKey.asTypeName()) },
                     packageName = assistedFactoryType.type.declaration.packageName.asString(),
                     factoryBaseName = assistedFactoryType.type.declaration.simpleName.asString(),
-                    assistedFactoryType = assistedFactoryType
+                    assistedFactoryType = assistedFactoryType,
+                    dependencies = AssistedFactoryDependenciesResolver.match(
+                        sourceDeclaration = injectable,
+                        assistedFactoryType = assistedFactoryType,
+                    )
                 )
             }
             .toList()
