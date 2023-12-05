@@ -1,26 +1,13 @@
 package com.daugeldauge.kinzhal.processor.generation
 
-import com.daugeldauge.kinzhal.annotations.Assisted
-import com.daugeldauge.kinzhal.processor.NonRecoverableProcessorException
+import com.daugeldauge.kinzhal.processor.AssistedFactoryDependency
 import com.daugeldauge.kinzhal.processor.model.AssistedFactoryType
 import com.daugeldauge.kinzhal.processor.model.FactoryBinding
 import com.daugeldauge.kinzhal.processor.model.Key
-import com.daugeldauge.kinzhal.processor.requireQualifiedName
-import com.daugeldauge.kinzhal.processor.toKey
 import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
-import com.google.devtools.ksp.symbol.KSValueParameter
-import com.squareup.kotlinpoet.ClassName
-import com.squareup.kotlinpoet.CodeBlock
-import com.squareup.kotlinpoet.FunSpec
-import com.squareup.kotlinpoet.KModifier
-import com.squareup.kotlinpoet.LambdaTypeName
-import com.squareup.kotlinpoet.ParameterSpec
-import com.squareup.kotlinpoet.PropertySpec
-import com.squareup.kotlinpoet.TypeName
-import com.squareup.kotlinpoet.TypeSpec
+import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ksp.toTypeName
-import com.squareup.kotlinpoet.withIndent
 
 internal fun generateAssistedFactory(
     codeGenerator: CodeGenerator,
@@ -30,44 +17,8 @@ internal fun generateAssistedFactory(
     packageName: String,
     factoryBaseName: String,
     assistedFactoryType: AssistedFactoryType,
+    dependencies: List<AssistedFactoryDependency>,
 ): FactoryBinding {
-    class Dependency(
-        val name: String,
-        val key: Key,
-        val isAssisted: Boolean,
-        val parameter: KSValueParameter,
-    )
-
-    val dependencies = sourceDeclaration.parameters.map {
-        val isAssisted = it.isAssisted
-        Dependency(
-            name = if (isAssisted) {
-                it.name!!.asString()
-            } else {
-                "${it.name!!.asString()}Provider"
-            },
-            key = it.type.toKey(it.annotations),
-            isAssisted = isAssisted,
-            parameter = it
-        )
-    }
-
-    val assistedSourceParameters = dependencies
-        .asSequence()
-        .filter(Dependency::isAssisted)
-        .map { it.name to it.key.type }
-        .toList()
-
-    val assistedFactoryParameters = assistedFactoryType.factoryMethod.parameters
-        .map { it.name?.asString() to it.type.resolve() }
-
-    if (assistedSourceParameters != assistedFactoryParameters) {
-        throw NonRecoverableProcessorException(
-            "Factory method in @AssistedFactory must have assisted parameters by same names, types and in the same order as @AssistedInject constructor",
-            assistedFactoryType.factoryMethod
-        )
-    }
-
     val providers: List<Pair<String, TypeName>> = dependencies
         .asSequence()
         .filterNot { it.isAssisted }
@@ -85,7 +36,6 @@ internal fun generateAssistedFactory(
         packageName = packageName,
         fileName = implName,
     ) {
-
         val properties = providers.map { (name, type) ->
             PropertySpec.builder(
                 name,
@@ -150,7 +100,7 @@ internal fun generateAssistedFactory(
         injectableKey = Key(assistedFactoryType.type),
         scoped = true,
         sourceDeclaration = null,
-        parameters = dependencies.asSequence().filterNot(Dependency::isAssisted).map(Dependency::parameter).toList(),
+        parameters = dependencies.asSequence().filterNot(AssistedFactoryDependency::isAssisted).map(AssistedFactoryDependency::parameter).toList(),
         containingFile = containingFile,
         addCreateInstanceCall = { add("%T", ClassName(packageName, implName)) },
         providersAreTransitive = true,
@@ -158,8 +108,3 @@ internal fun generateAssistedFactory(
         factoryBaseName = implName
     )
 }
-
-private val KSValueParameter.isAssisted: Boolean
-    get() = annotations.any {
-        it.annotationType.resolve().declaration.qualifiedName?.asString() == Assisted::class.requireQualifiedName()
-    }
