@@ -67,12 +67,14 @@ internal class KinzhalSymbolProcessor(private val codeGenerator: CodeGenerator, 
                     .filter(KSFunctionDeclaration::isAbstract)
                     .toList()
 
+                if (abstractFunctions.size != 1) {
+                    logger.error("@AssistedFactory type must contain only single abstract method", assistedFactoryDeclaration)
+                    return@mapNotNull null
+                }
+
                 AssistedFactoryType(
                     type = assistedFactoryDeclaration.asType(emptyList()),
-                    factoryMethod = abstractFunctions.getOrNull(0) ?: run {
-                        logger.error("@AssistedFactory type must contain only single abstract method", assistedFactoryDeclaration)
-                        return@mapNotNull null
-                    }
+                    factoryMethod = abstractFunctions[0]
                 )
             }.associateBy { it.factoryMethod.returnType?.resolve()?.declaration?.qualifiedName?.asString() }
 

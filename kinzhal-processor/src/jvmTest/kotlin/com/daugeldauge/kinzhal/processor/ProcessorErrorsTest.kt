@@ -221,6 +221,52 @@ internal class ProcessorErrorsTest {
         """.trimIndent()))
     }
 
+    @Test
+    fun `assisted factory is not abstract`() {
+        expectError("@AssistedFactory can be applied only to abstract types", kotlin("source.kt", """
+            import com.daugeldauge.kinzhal.annotations.AssistedFactory
+            
+            @AssistedFactory
+            class AssistedFactory
+        """.trimIndent()))
+    }
+
+    @Test
+    fun `assisted factory has no single abstract method`() {
+        expectError("@AssistedFactory type must contain only single abstract method", kotlin("source.kt", """
+            import com.daugeldauge.kinzhal.annotations.AssistedFactory
+            
+            @AssistedFactory
+            interface AssistedFactory {
+                fun build1(): String
+                fun build2(): String
+            }
+        """.trimIndent()))
+    }
+
+    @Test
+    fun `assisted inject is not applied to constructor`() {
+        expectError("@AssistedInject can't be applied to notConstructor: only constructor injection supported", kotlin("source.kt", """
+            import com.daugeldauge.kinzhal.annotations.AssistedInject
+            
+            @AssistedInject
+            fun notConstructor() = Unit
+        """.trimIndent()))
+    }
+
+    @Test
+    fun `no factory for assisted inject type`() {
+        expectError("@AssistedFactory annotated type doesn't exist for type TypeWithoutFactory", kotlin("source.kt", """
+            import com.daugeldauge.kinzhal.annotations.AssistedInject
+            import com.daugeldauge.kinzhal.annotations.Assisted
+            
+            class TypeWithoutFactory @AssistedInject constructor(
+                @Assisted param1: Int,
+                param2: String
+            )
+        """.trimIndent()))
+    }
+
 
     private fun expectError(message: String, vararg sourceFiles: SourceFile) {
         val result = compile(*sourceFiles)
