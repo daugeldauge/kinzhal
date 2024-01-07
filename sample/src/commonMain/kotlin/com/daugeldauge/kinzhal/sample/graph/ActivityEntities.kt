@@ -17,8 +17,8 @@ class Router @Inject constructor(application: Application, versions: Versions, m
 class ArtistsPresenter @Inject constructor(
     private val database: Database,
     private val artistImagesStorage: ArtistImagesStorage,
-    private val deezer: DeezerApi,
-    private val spotify: SpotifyApi,
+    private val deezer: () -> DeezerApi,
+    private val spotify: Lazy<SpotifyApi>,
     private val discogs: DiscogsApi,
     private val router: Router,
 )

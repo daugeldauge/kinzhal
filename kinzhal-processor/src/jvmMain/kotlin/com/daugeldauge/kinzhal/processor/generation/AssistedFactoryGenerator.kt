@@ -1,6 +1,5 @@
 package com.daugeldauge.kinzhal.processor.generation
 
-import com.daugeldauge.kinzhal.processor.AssistedFactoryDependency
 import com.daugeldauge.kinzhal.processor.model.AssistedFactoryType
 import com.daugeldauge.kinzhal.processor.model.FactoryBinding
 import com.daugeldauge.kinzhal.processor.model.Key
@@ -17,13 +16,13 @@ internal fun generateAssistedFactory(
     packageName: String,
     factoryBaseName: String,
     assistedFactoryType: AssistedFactoryType,
-    dependencies: List<AssistedFactoryDependency>,
+    dependencies: List<FactoryDependency>,
 ): FactoryBinding {
     val providers: List<Pair<String, TypeName>> = dependencies
         .asSequence()
         .filterNot { it.isAssisted }
         .map { dependency ->
-            dependency.name to LambdaTypeName.get(returnType = dependency.key.asTypeName())
+            dependency.providerName to dependency.providerType
         }
         .toList()
 
@@ -78,11 +77,8 @@ internal fun generateAssistedFactory(
                             } else {
                                 add("(\n")
                                 withIndent {
-                                    dependencies.forEach {
-                                        add("%N", it.name)
-                                        if (!it.isAssisted) {
-                                            add("()")
-                                        }
+                                    dependencies.forEach { dependency ->
+                                        addProviderCodeBlock(dependency, dependency.isAssisted)
                                         add(",\n")
                                     }
                                 }
@@ -100,7 +96,7 @@ internal fun generateAssistedFactory(
         injectableKey = Key(assistedFactoryType.type),
         scoped = true,
         sourceDeclaration = null,
-        parameters = dependencies.asSequence().filterNot(AssistedFactoryDependency::isAssisted).map(AssistedFactoryDependency::parameter).toList(),
+        dependencies = dependencies.asSequence().filterNot(FactoryDependency::isAssisted).toList(),
         containingFile = containingFile,
         addCreateInstanceCall = { add("%T", ClassName(packageName, implName)) },
         providersAreTransitive = true,

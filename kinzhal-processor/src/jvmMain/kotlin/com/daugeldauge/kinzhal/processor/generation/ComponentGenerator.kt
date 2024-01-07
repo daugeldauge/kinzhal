@@ -1,12 +1,13 @@
 package com.daugeldauge.kinzhal.processor.generation
 
-import com.daugeldauge.kinzhal.processor.*
+import com.daugeldauge.kinzhal.processor.classDeclaration
 import com.daugeldauge.kinzhal.processor.model.ComponentFunctionRequestedKey
 import com.daugeldauge.kinzhal.processor.model.ComponentPropertyRequestedKey
 import com.daugeldauge.kinzhal.processor.model.FactoryBinding
 import com.daugeldauge.kinzhal.processor.model.ResolvedBindingGraph
+import com.daugeldauge.kinzhal.processor.returnTypeKey
+import com.daugeldauge.kinzhal.processor.typeKey
 import com.google.devtools.ksp.processing.CodeGenerator
-import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.squareup.kotlinpoet.*
 
 internal fun ResolvedBindingGraph.generateComponent(codeGenerator: CodeGenerator) {
