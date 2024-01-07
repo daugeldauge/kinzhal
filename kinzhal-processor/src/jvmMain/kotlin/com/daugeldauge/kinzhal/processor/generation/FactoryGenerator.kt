@@ -5,12 +5,10 @@ import com.daugeldauge.kinzhal.processor.findAnnotation
 import com.daugeldauge.kinzhal.processor.model.FactoryBinding
 import com.daugeldauge.kinzhal.processor.model.Key
 import com.daugeldauge.kinzhal.processor.resolveToUnderlying
-import com.daugeldauge.kinzhal.processor.toKey
 import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSFile
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
-import com.google.devtools.ksp.symbol.KSValueParameter
 import com.squareup.kotlinpoet.*
 
 
@@ -30,7 +28,9 @@ internal fun generateFactory(
             it.annotationType.resolveToUnderlying().declaration.findAnnotation<Scope>()?.annotationType?.resolveToUnderlying()
         }.toList().isNotEmpty(),
         sourceDeclaration = sourceDeclaration,
-        parameters = sourceDeclaration.parameters,
+        dependencies = sourceDeclaration.parameters.map {
+                FactoryDependency.fromParameter(it)
+        },
         containingFile = sourceDeclaration.containingFile!!,
         addCreateInstanceCall = addCreateInstanceCall,
         providersAreTransitive = false,
@@ -44,21 +44,13 @@ internal fun generateFactory(
     injectableKey: Key,
     scoped: Boolean,
     sourceDeclaration: KSFunctionDeclaration?,
-    parameters: List<KSValueParameter>,
+    dependencies: List<FactoryDependency>,
     containingFile: KSFile,
     addCreateInstanceCall: CodeBlock.Builder.() -> Unit,
     providersAreTransitive: Boolean,
     packageName: String,
     factoryBaseName: String,
 ): FactoryBinding {
-    val dependencies = parameters.map {
-        ("${it.name!!.asString()}Provider") to it.type.toKey(it.annotations)
-    }
-
-    val providers: List<Pair<String, TypeName>> = dependencies.map { (providerName, key) ->
-        providerName to LambdaTypeName.get(returnType = key.asTypeName())
-    }
-
     val factoryName = factoryBaseName + "_Factory"
     codeGenerator.newFile(
         dependenciesAggregating = false,
@@ -67,12 +59,12 @@ internal fun generateFactory(
         fileName = factoryName,
     ) {
 
-        val properties = providers.map { (name, type) ->
+        val properties = dependencies.map { dependency ->
             PropertySpec.builder(
-                name,
-                type,
+                dependency.providerName,
+                dependency.providerType,
                 KModifier.PRIVATE,
-            ).initializer(name).build()
+            ).initializer(dependency.providerName).build()
         }
 
         addType(
@@ -81,7 +73,7 @@ internal fun generateFactory(
                 .primaryConstructor(
                     FunSpec.constructorBuilder()
                         .addParameters(
-                            providers.map { (name, type) -> ParameterSpec.builder(name, type).build() }
+                            dependencies.map { dependency -> ParameterSpec.builder(dependency.providerName, dependency.providerType).build() }
                         )
                         .build()
                 )
@@ -95,16 +87,13 @@ internal fun generateFactory(
                             add("return ")
                             addCreateInstanceCall()
 
-                            if (properties.isEmpty()) {
+                            if (dependencies.isEmpty()) {
                                 add("()")
                             } else {
                                 add("(\n")
                                 withIndent {
-                                    properties.forEach {
-                                        add("%N", it)
-                                        if (!providersAreTransitive) {
-                                            add("()")
-                                        }
+                                    dependencies.forEach { dependency ->
+                                        addProviderCodeBlock(dependency, providersAreTransitive)
                                         add(",\n")
                                     }
                                 }
@@ -122,7 +111,7 @@ internal fun generateFactory(
         declaration = sourceDeclaration,
         containingFile = containingFile,
         scoped = scoped,
-        dependencies = dependencies.map { it.second },
+        dependencies = dependencies.map { it.key },
         factoryName = factoryName,
         factoryPackage = packageName,
     )

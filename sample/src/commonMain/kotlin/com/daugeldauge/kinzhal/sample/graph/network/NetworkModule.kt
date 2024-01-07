@@ -12,7 +12,12 @@ interface NetworkModule {
 
         @HttpClientScope
         fun provideDiscogsImpl(assistedFactory: DiscogsKtorApiFactory): DiscogsKtorApi {
-            return assistedFactory.create(apiKey = "123", userAgent = "Kinzhal")
+            return assistedFactory.create(
+                apiKey = "123",
+                userAgent = "Kinzhal",
+                providerApiKey = { "provider 123" },
+                lazyUserAgent = lazy { "Lazy Kinzhal" },
+            )
         }
     }
 

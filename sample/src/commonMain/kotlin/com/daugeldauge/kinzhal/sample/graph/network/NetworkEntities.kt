@@ -7,6 +7,8 @@ import com.daugeldauge.kinzhal.annotations.AssistedFactory
 import com.daugeldauge.kinzhal.annotations.AssistedInject
 import com.daugeldauge.kinzhal.annotations.Inject
 import com.daugeldauge.kinzhal.annotations.Scope
+import com.daugeldauge.kinzhal.sample.graph.Application
+import com.daugeldauge.kinzhal.sample.graph.Versions
 
 @Scope
 annotation class HttpClientScope
@@ -27,9 +29,22 @@ class DeezerKtorApi @Inject constructor(client: HttpClient) : DeezerApi
 
 class SpotifyKtorApi @Inject constructor(client: HttpClient) : SpotifyApi
 
-class DiscogsKtorApi @AssistedInject constructor(client: HttpClient, @Assisted apiKey: String, @Assisted userAgent: String) : DiscogsApi
+class DiscogsKtorApi @AssistedInject constructor(
+    application: Application,
+    client: Lazy<HttpClient>,
+    versionsProvider: () -> Versions,
+    @Assisted apiKey: String,
+    @Assisted userAgent: String,
+    @Assisted providerApiKey: () -> String,
+    @Assisted lazyUserAgent: Lazy<String>,
+) : DiscogsApi
 
 @AssistedFactory
 interface DiscogsKtorApiFactory {
-    fun create(apiKey: String, userAgent: String): DiscogsKtorApi
+    fun create(
+        apiKey: String,
+        userAgent: String,
+        providerApiKey: () -> String,
+        lazyUserAgent: Lazy<String>,
+    ): DiscogsKtorApi
 }
