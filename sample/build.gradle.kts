@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompileCommon
 
 plugins {
@@ -41,12 +42,12 @@ dependencies  {
     kspCommonMainMetadata(kinzhalDependency(projects.kinzhalProcessor))
 }
 
-tasks.withType<org.jetbrains.kotlin.gradle.dsl.KotlinCompile<*>>().configureEach {
+tasks.withType<KotlinCompilationTask<*>>().configureEach {
     if (this !is KotlinCompileCommon) {
         dependsOn("kspCommonMainKotlinMetadata")
     }
 
-    kotlinOptions.allWarningsAsErrors = true
+    compilerOptions.allWarningsAsErrors = true
 }
 
 

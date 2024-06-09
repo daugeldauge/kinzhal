@@ -9,10 +9,10 @@ pluginManagement {
 dependencyResolutionManagement {
     versionCatalogs {
         create("libs") {
-            val kotlinVersion = "1.9.24"
+            val kotlinVersion = "2.0.0"
             version("kotlin", kotlinVersion)
 
-            val kspVersion = "$kotlinVersion-1.0.20"
+            val kspVersion = "$kotlinVersion-1.0.22"
             val kotlinpoet = "1.13.1"
 
             library("kotlinpoet", "com.squareup", "kotlinpoet").version(kotlinpoet)
