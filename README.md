@@ -113,22 +113,22 @@ See more in the [source code](https://github.com/daugeldauge/kinzhal/tree/master
   
 ## Dagger2 compatibility table
 
-| Feature    | Kinzhal support | Notes      |
-| ---------- | --------------- | -----------|
-| `@Component` | ✅ | |
-| Constructor injection | ✅ | |
-| Field injection | 🚫 | [#1](https://github.com/daugeldauge/kinzhal/issues/1) |
-| Component provision functions and properties | ✅ | |
+| Feature    | Kinzhal support | Notes                                                                                                                                                                                                                           |
+| ---------- | --------------- |---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `@Component` | ✅ |                                                                                                                                                                                                                                 |
+| Constructor injection | ✅ |                                                                                                                                                                                                                                 |
+| Field injection | 🚫 | [#1](https://github.com/daugeldauge/kinzhal/issues/1)                                                                                                                                                                           |
+| Component provision functions and properties | ✅ |                                                                                                                                                                                                                                 |
 | `@Module` | ⚠️ | Kinzhal has modules but does not have `@Module` annotation. All classes in component module list are treated as modules. Only `object` modules with provides=functions and `interface` modules with binds-functions are allowed |
-| `@Provides` | ⚠️ | Kinzhal does not have `@Provides` annotation. All non-abstract functions in a module are considered to be provides-functions |
-| `@Binds` | ⚠️ | Kinzhal does not have `@Binds` annotation. All abstract functions in a module are considered to be binds-functions |
-| `@Scope` | ✅ | |
-| `@Qualifier` | ✅ | |
-| Component dependencies | ✅ | Dependency instances are passed to generated component's constructor instead of builder functions |
-| `@Subcomponent` | 🚫 | [#3](https://github.com/daugeldauge/kinzhal/issues/3) <br> You can use component dependency to emulate behaviour of subcomponents |
-| `@Reusable` | 🚫 | |
-| `@BindsInstance` | 🚫 | You can use component dependency to bind instances |
-| Lazy/provider injections | 🚫 | [#2](https://github.com/daugeldauge/kinzhal/issues/2) |
+| `@Provides` | ⚠️ | Kinzhal does not have `@Provides` annotation. All non-abstract functions in a module are considered to be provides-functions                                                                                                    |
+| `@Binds` | ⚠️ | Kinzhal does not have `@Binds` annotation. All abstract functions in a module are considered to be binds-functions                                                                                                              |
+| `@Scope` | ✅ |                                                                                                                                                                                                                                 |
+| `@Qualifier` | ✅ |                                                                                                                                                                                                                                 |
+| Component dependencies | ✅ | Dependency instances are passed to generated component's constructor instead of builder functions                                                                                                                               |
+| `@Subcomponent` | 🚫 | [#3](https://github.com/daugeldauge/kinzhal/issues/3) <br> You can use component dependency to emulate behaviour of subcomponents                                                                                               |
+| `@Reusable` | 🚫 |                                                                                                                                                                                                                                 |
+| `@BindsInstance` | 🚫 | You can use component dependency to bind instances                                                                                                                                                                              |
+| Lazy/provider injections | ✅ | You can use `kotlin.Lazy<T>` to inject a lazy instance, and `() -> T` to inject a provider                                                                                                                                      |
 | `@BindsOptionalOf` | 🚫 |
-| Multibindings | 🚫 | |
-| Assisted injection | ✅ | |
+| Multibindings | 🚫 |                                                                                                                                                                                                                                 |
+| Assisted injection | ✅ |                                                                                                                                                                                                                                 |
