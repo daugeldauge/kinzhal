@@ -1,5 +1,6 @@
-[![Maven Central](https://img.shields.io/maven-central/v/com.daugeldauge.kinzhal/kinzhal-processor?color=blue)](https://search.maven.org/search?q=g:com.daugeldauge.kinzhal)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0)
+# DEPRECATED
+
+Kinzhal is deprecated in favor of [kotlin-inject](https://github.com/evant/kotlin-inject)
 
 # Kinzhal
 
@@ -47,14 +48,6 @@ kotlin {
 
 
 ## FAQ
-
-**What does *kinzhal* mean?**
-
-It's a [russian word](https://en.wiktionary.org/wiki/кинжал) for dagger. Yes, *K* is not a pun
-  
-**Will this project become deprecated after Dagger releases [support for KSP and Multiplatform](https://github.com/google/dagger/issues/2349)?** 
-
-Probably. But we'll see
 
 **What targets are supported?**
 
